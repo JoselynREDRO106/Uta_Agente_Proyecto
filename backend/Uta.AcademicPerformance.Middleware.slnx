@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Uta.Middleware.Application/Uta.Middleware.Application.csproj" />
+  <Project Path="Uta.Middleware.Domain/Uta.Middleware.Domain.csproj" />
+  <Project Path="Uta.Middleware.Infrastructure/Uta.Middleware.Infrastructure.csproj" />
+  <Project Path="Uta.Middleware.WebApi/Uta.Middleware.WebApi.csproj" />
+</Solution>
