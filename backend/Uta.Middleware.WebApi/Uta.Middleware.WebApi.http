@@ -1,0 +1,6 @@
+@Uta.Middleware.WebApi_HostAddress = http://localhost:5193
+
+GET {{Uta.Middleware.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
