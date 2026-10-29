@@ -7,6 +7,14 @@ namespace Uta.Middleware.Application.Interfaces;
 /// </summary>
 public interface IMoodleHttpClient
 {
+    Task<MoodleCourseDto> GetCourseAsync(
+        int courseId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<MoodleEnrolledUserDto>> GetEnrolledUsersAsync(
+        int courseId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Obtiene las calificaciones de todos los usuarios de una asignatura
     /// usando la función core_grades_get_grades de Moodle REST.

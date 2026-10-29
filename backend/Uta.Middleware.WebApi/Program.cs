@@ -1,4 +1,5 @@
 using Uta.Middleware.Infrastructure;
+using Uta.Middleware.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,5 +33,17 @@ app.MapGet("/health", () => Results.Ok(new
     status = "ok",
     servicio = "EduMonitor.Middleware"
 }));
+app.MapGet("/health/database", async (
+    EduMonitorDbContext dbContext,
+    CancellationToken cancellationToken) =>
+{
+    var connected = await dbContext.Database.CanConnectAsync(cancellationToken);
+    return connected
+        ? Results.Ok(new { status = "ok", database = "EduMonitor" })
+        : Results.Problem(
+            title: "No se pudo conectar con SQL Server",
+            detail: "Verifique que SQL Server Express esté iniciado y que la base EduMonitor exista.",
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+});
 
 app.Run();
