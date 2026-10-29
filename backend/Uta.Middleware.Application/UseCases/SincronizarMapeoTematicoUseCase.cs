@@ -10,17 +10,26 @@ namespace Uta.Middleware.Application.UseCases;
 public class SincronizarMapeoTematicoUseCase : ISincronizarMapeoTematicoUseCase
 {
     private readonly IMoodleHttpClient _moodleHttpClient;
+    private readonly IEduMonitorRepository _repository;
 
-    public SincronizarMapeoTematicoUseCase(IMoodleHttpClient moodleHttpClient)
+    public SincronizarMapeoTematicoUseCase(
+        IMoodleHttpClient moodleHttpClient,
+        IEduMonitorRepository repository)
     {
         _moodleHttpClient = moodleHttpClient;
+        _repository = repository;
     }
 
     public async Task<IEnumerable<MapeoTematico>> EjecutarAsync(
         int courseId,
         CancellationToken cancellationToken = default)
     {
-        var response = await _moodleHttpClient.GetCourseContentsAsync(courseId, cancellationToken);
+        var courseTask = _moodleHttpClient.GetCourseAsync(courseId, cancellationToken);
+        var contentsTask = _moodleHttpClient.GetCourseContentsAsync(courseId, cancellationToken);
+        await Task.WhenAll(courseTask, contentsTask);
+
+        var course = await courseTask;
+        var response = await contentsTask;
 
         var mapeos = new List<MapeoTematico>();
 
@@ -32,7 +41,7 @@ public class SincronizarMapeoTematicoUseCase : ISincronizarMapeoTematicoUseCase
                 mapeos.Add(new MapeoTematico
                 {
                     MoodleCourseId    = courseId,
-                    NombreAsignatura  = $"Curso-{courseId}",
+                    NombreAsignatura  = course.FullName,
                     MoodleGradeItemId = module.Instance ?? module.Id,
                     NombreActividad   = module.Name,
                     UnidadTematica    = string.IsNullOrWhiteSpace(section.Name)
@@ -43,6 +52,8 @@ public class SincronizarMapeoTematicoUseCase : ISincronizarMapeoTematicoUseCase
                 });
             }
         }
+
+        await _repository.SaveCourseContentsAsync(course, response, cancellationToken);
 
         return mapeos;
     }

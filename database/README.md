@@ -2,20 +2,24 @@
 
 El esquema de prueba usa SQL Server 2022 y crea la base `EduMonitor`.
 
-## Levantar SQL Server
+## SQL Server local (sin Docker)
 
-Desde la raíz del repositorio, copia `.env.example` a `.env`, reemplaza `MSSQL_SA_PASSWORD` por una contraseña local segura y levanta el contenedor:
+El backend de desarrollo se conecta por autenticación integrada de Windows a `localhost\SQLEXPRESS`, usando la base `EduMonitor`. Inicia el servicio SQL Server Express y, desde PowerShell en la raíz del repositorio, ejecuta:
+
+```powershell
+sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\001_schema.sql
+sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\002_seed.sql
+```
+
+`-E` usa la identidad de Windows de la terminal y `-C` confía en el certificado local. La identidad debe tener permisos para crear la base y sus tablas la primera vez.
+
+## SQL Server en Docker (alternativa)
+
+Si prefieres usar Docker, desde la raíz copia `.env.example` a `.env`, cambia las contraseñas de ejemplo y levanta el servicio `sqlserver`:
 
 ```powershell
 docker compose up -d sqlserver
 docker compose ps
-```
-
-## Ejecutar los scripts
-
-El contenedor monta esta carpeta en `/scripts`. Ejecuta primero el esquema y luego los datos ficticios:
-
-```powershell
 docker exec -it edumonitor-sql bash -lc '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -i /scripts/001_schema.sql'
 docker exec -it edumonitor-sql bash -lc '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -i /scripts/002_seed.sql'
 ```
