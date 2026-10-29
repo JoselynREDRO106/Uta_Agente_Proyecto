@@ -309,6 +309,12 @@ node_modules/
 *.dsw
 *.dsp
 
+# Moodle course backups are Sprint 1 deliverables.
+!infra/
+!infra/moodle/
+!infra/moodle/backups/
+!infra/moodle/backups/**
+
 # Visual Studio 6 technical files
 *.ncb
 *.aps

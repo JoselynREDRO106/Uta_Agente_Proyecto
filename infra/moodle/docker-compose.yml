@@ -1,0 +1,52 @@
+services:
+  mariadb:
+    image: mariadb:10.11
+    container_name: edumonitor-moodle-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?Set MARIADB_ROOT_PASSWORD in the root .env file}
+      MARIADB_DATABASE: ${MOODLE_DB_NAME:?Set MOODLE_DB_NAME in the root .env file}
+      MARIADB_USER: ${MOODLE_DB_USER:?Set MOODLE_DB_USER in the root .env file}
+      MARIADB_PASSWORD: ${MOODLE_DB_PASSWORD:?Set MOODLE_DB_PASSWORD in the root .env file}
+    volumes:
+      - moodledb:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  moodle:
+    build:
+      context: ../..
+      dockerfile: infra/moodle/Dockerfile
+      args:
+        MOODLE_VERSION: ${MOODLE_VERSION:-4.5.15}
+    container_name: edumonitor-moodle
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      MOODLE_WWWROOT: ${MOODLE_WWWROOT:-http://localhost:8080}
+      MOODLE_DB_HOST: mariadb
+      MOODLE_DB_NAME: ${MOODLE_DB_NAME:?Set MOODLE_DB_NAME in the root .env file}
+      MOODLE_DB_USER: ${MOODLE_DB_USER:?Set MOODLE_DB_USER in the root .env file}
+      MOODLE_DB_PASSWORD: ${MOODLE_DB_PASSWORD:?Set MOODLE_DB_PASSWORD in the root .env file}
+      MOODLE_ADMIN_USER: ${MOODLE_ADMIN_USER:?Set MOODLE_ADMIN_USER in the root .env file}
+      MOODLE_ADMIN_PASSWORD: ${MOODLE_ADMIN_PASSWORD:?Set MOODLE_ADMIN_PASSWORD in the root .env file}
+      MOODLE_ADMIN_EMAIL: ${MOODLE_ADMIN_EMAIL:?Set MOODLE_ADMIN_EMAIL in the root .env file}
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - moodledata:/var/www/moodledata
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost/login/index.php > /dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+volumes:
+  moodledb:
+  moodledata:
