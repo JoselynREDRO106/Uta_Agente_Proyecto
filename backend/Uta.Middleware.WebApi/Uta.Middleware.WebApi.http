@@ -1,6 +1,6 @@
-@Uta.Middleware.WebApi_HostAddress = http://localhost:5193
+@Uta.Middleware.WebApi_HostAddress = http://localhost:5000
 
-GET {{Uta.Middleware.WebApi_HostAddress}}/weatherforecast/
+GET {{Uta.Middleware.WebApi_HostAddress}}/health
 Accept: application/json
 
 ###
