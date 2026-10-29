@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 using Uta.Middleware.Application.Interfaces;
 using Uta.Middleware.Application.UseCases;
+using Uta.Middleware.Infrastructure.Data;
 using Uta.Middleware.Infrastructure.Moodle;
 
 namespace Uta.Middleware.Infrastructure;
@@ -16,6 +18,14 @@ public static class InfrastructureServiceExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        var connectionString = configuration.GetConnectionString("EduMonitor")
+            ?? throw new InvalidOperationException(
+                "No está configurada la cadena de conexión 'EduMonitor'.");
+
+        services.AddDbContext<EduMonitorDbContext>(options =>
+            options.UseSqlServer(connectionString));
+        services.AddScoped<IEduMonitorRepository, EduMonitorRepository>();
+
         // Enlazar configuración de Moodle usando la sección del appsettings.json
         var moodleSection = configuration.GetSection(MoodleSettings.SectionName);
         services.Configure<MoodleSettings>(opts => moodleSection.Bind(opts));

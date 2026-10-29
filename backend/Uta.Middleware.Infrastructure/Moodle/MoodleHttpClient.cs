@@ -28,6 +28,34 @@ public class MoodleHttpClient : IMoodleHttpClient
         _settings   = options.Value;
     }
 
+    public async Task<MoodleCourseDto> GetCourseAsync(
+        int courseId,
+        CancellationToken cancellationToken = default)
+    {
+        var courses = await GetAsync<List<MoodleCourseDto>>(
+            BuildUrl("core_course_get_courses", new Dictionary<string, string>
+            {
+                ["options[ids][0]"] = courseId.ToString()
+            }),
+            cancellationToken);
+
+        return courses?.SingleOrDefault(course => course.Id == courseId)
+            ?? throw new HttpRequestException($"Moodle no devolvió el curso {courseId}.");
+    }
+
+    public async Task<IReadOnlyCollection<MoodleEnrolledUserDto>> GetEnrolledUsersAsync(
+        int courseId,
+        CancellationToken cancellationToken = default)
+    {
+        return await GetAsync<List<MoodleEnrolledUserDto>>(
+                   BuildUrl("core_enrol_get_enrolled_users", new Dictionary<string, string>
+                   {
+                       ["courseid"] = courseId.ToString()
+                   }),
+                   cancellationToken)
+               ?? [];
+    }
+
     /// <inheritdoc/>
     public async Task<MoodleGradesResponseDto> GetGradesByCourseAsync(
         int courseId,
