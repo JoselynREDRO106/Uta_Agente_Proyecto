@@ -10,26 +10,43 @@ namespace Uta.Middleware.Application.UseCases;
 public class SincronizarCalificacionesUseCase : ISincronizarCalificacionesUseCase
 {
     private readonly IMoodleHttpClient _moodleHttpClient;
+    private readonly IEduMonitorRepository _repository;
 
-    public SincronizarCalificacionesUseCase(IMoodleHttpClient moodleHttpClient)
+    public SincronizarCalificacionesUseCase(
+        IMoodleHttpClient moodleHttpClient,
+        IEduMonitorRepository repository)
     {
         _moodleHttpClient = moodleHttpClient;
+        _repository = repository;
     }
 
     public async Task<IEnumerable<Calificacion>> EjecutarAsync(
         int courseId,
         CancellationToken cancellationToken = default)
     {
-        var response = await _moodleHttpClient.GetGradesByCourseAsync(courseId, cancellationToken);
+        var courseTask = _moodleHttpClient.GetCourseAsync(courseId, cancellationToken);
+        var usersTask = _moodleHttpClient.GetEnrolledUsersAsync(courseId, cancellationToken);
+        var gradesTask = _moodleHttpClient.GetGradesByCourseAsync(courseId, cancellationToken);
+        await Task.WhenAll(courseTask, usersTask, gradesTask);
+
+        var course = await courseTask;
+        var users = await usersTask;
+        var response = await gradesTask;
 
         // Crear un mapa de ítems para enriquecer las calificaciones
         var itemsMap = response.Items.ToDictionary(i => i.Id);
 
         var calificaciones = response.Grades
-            .Where(g => !string.IsNullOrWhiteSpace(g.Grade) && g.Grade != "-")
             .Select(g =>
             {
                 itemsMap.TryGetValue(g.ItemId, out var item);
+                decimal? grade = decimal.TryParse(
+                    g.Grade,
+                    System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var parsedGrade)
+                    ? parsedGrade
+                    : null;
 
                 return new Calificacion
                 {
@@ -37,7 +54,7 @@ public class SincronizarCalificacionesUseCase : ISincronizarCalificacionesUseCas
                     MoodleCourseId     = courseId,
                     MoodleGradeItemId  = g.ItemId,
                     NombreActividad    = item?.ItemName ?? $"Item-{g.ItemId}",
-                    NotaObtenida       = decimal.TryParse(g.Grade, out var nota) ? nota : null,
+                    NotaObtenida       = grade,
                     NotaMaxima         = item?.GradeMax ?? 10m,
                     FechaRegistro      = long.TryParse(g.DateGraded, out var epoch)
                                             ? DateTimeOffset.FromUnixTimeSeconds(epoch).UtcDateTime
@@ -45,6 +62,8 @@ public class SincronizarCalificacionesUseCase : ISincronizarCalificacionesUseCas
                 };
             })
             .ToList();
+
+        await _repository.SaveGradesAsync(course, users, response, cancellationToken);
 
         return calificaciones;
     }

@@ -19,6 +19,7 @@ public class MoodleGradeItemDto
     public string ItemName { get; set; } = string.Empty;
     public string ItemType { get; set; } = string.Empty;
     public string ItemModule { get; set; } = string.Empty;
+    public int? ItemInstance { get; set; }
     public decimal GradeMin { get; set; }
     public decimal GradeMax { get; set; }
 }
