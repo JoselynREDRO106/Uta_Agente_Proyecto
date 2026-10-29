@@ -7,7 +7,7 @@ Sistema de seguimiento y análisis del rendimiento académico integrado con Mood
 - Git
 - .NET 10 SDK
 - Node.js 20.19+ o 22.12+, con npm
-- Docker Desktop con Docker Compose, para levantar SQL Server
+- SQL Server Express para probar la persistencia local
 
 ## Estructura
 
@@ -24,33 +24,28 @@ docker-compose.yml
 
 ## Configuración local
 
-Desde la raíz del repositorio, copia el archivo de ejemplo. Antes de iniciar los contenedores, cambia las contraseñas de ejemplo por valores locales fuertes y únicos:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-No subas `.env`, tokens ni contraseñas al repositorio. El archivo raíz `.env` lo usan Docker Compose y la configuración local del middleware.
+No subas `.env`, tokens ni contraseñas al repositorio. `.env` se reserva para los servicios Docker opcionales; el backend local usa `appsettings.Development.json` y variables de entorno de PowerShell.
 
 ## Base de datos del middleware (SQL Server)
 
-```powershell
-docker compose up -d sqlserver
-docker compose ps
-```
-
-El servicio persiste los datos en el volumen `sqldata` y monta `database/` en `/scripts`. Ejecuta el esquema y los datos de prueba; ambos scripts se pueden volver a ejecutar:
+Con SQL Server Express iniciado, la configuración de desarrollo usa autenticación integrada de Windows contra `localhost\SQLEXPRESS` y la base `EduMonitor`. Crea el esquema y los datos de prueba desde PowerShell en la raíz:
 
 ```powershell
-docker exec -it edumonitor-sql bash -lc '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -i /scripts/001_schema.sql'
-docker exec -it edumonitor-sql bash -lc '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -i /scripts/002_seed.sql'
+sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\001_schema.sql
+sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\002_seed.sql
 ```
 
-Consulta [database/README.md](database/README.md) para verificar las tablas y los estados de muestra.
+`-E` usa la identidad de Windows con la que se ejecuta la terminal y la API. `-C` confía en el certificado local de SQL Server. La configuración está en `backend/Uta.Middleware.WebApi/appsettings.Development.json`; cambia el servidor si tu instancia tiene otro nombre. El endpoint `http://localhost:5000/health/database` verifica la conexión. Consulta [database/README.md](database/README.md) para verificar las tablas y los estados de muestra.
 
-## Moodle 4.5.15+
+Para usar SQL Server sin Docker, no ejecutes `docker compose` para SQL Server. La instancia local debe estar iniciada y el usuario de Windows debe tener permiso para conectarse y crear/usar la base `EduMonitor`.
 
-El entorno local descarga la distribución oficial Moodle 4.5.15 durante la construcción de la imagen y utiliza MariaDB 10.11. Con Docker Desktop iniciado y las contraseñas locales cambiadas en `.env`:
+## Conexión con Moodle
+
+El backend consume Moodle mediante Web Services REST y un token; no se conecta a la base de datos de Moodle. Si ya tienes Moodle instalado localmente, inicia Apache/MariaDB con tu instalación habitual y configura `MoodleSettings__BaseUrl` con la URL que abre en tu navegador. No necesitas usar Docker para ello.
+
+El repositorio también incluye un entorno opcional de Moodle 4.5.15 en Docker, descrito en [docs/moodle_setup.md](docs/moodle_setup.md). Úsalo solo si quieres crear un Moodle de laboratorio desde cero.
+
+Para usar ese entorno opcional, con Docker Desktop iniciado y las contraseñas locales cambiadas en `.env`:
 
 ```powershell
 docker compose --env-file .env -f infra/moodle/docker-compose.yml up -d --build
@@ -88,6 +83,8 @@ $env:MoodleSettings__BaseUrl = 'http://localhost:8080'
 $env:MoodleSettings__Token = 'PEGA_AQUI_EL_TOKEN_LOCAL'
 dotnet run --project backend/Uta.Middleware.WebApi/Uta.Middleware.WebApi.csproj --launch-profile http
 ```
+
+Las rutas de sincronización consultan Moodle y guardan cursos, usuarios, actividades, calificaciones y mapeos temáticos en SQL Server. El token debe tener acceso a `core_course_get_courses`, `core_enrol_get_enrolled_users`, `core_grades_get_grades` y `core_course_get_contents`.
 
 ## Frontend React
 
