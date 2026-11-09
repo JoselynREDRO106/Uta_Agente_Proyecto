@@ -191,6 +191,72 @@
   padding: 43px 48px 56px;
 }
 
+.moodle-config {
+  max-width: 760px;
+}
+
+.moodle-config__form {
+  display: grid;
+  gap: 10px;
+  padding: 8px 0 18px;
+}
+
+.moodle-config__form label {
+  margin-top: 8px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.moodle-config__form input {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+}
+
+.moodle-config__form input:focus {
+  border-color: #667ef3;
+  outline: 3px solid #667ef326;
+}
+
+.moodle-config__form .muted {
+  margin: 0;
+}
+
+.moodle-config__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.count-pill--muted {
+  background: #f0f2f6;
+  color: #788397;
+}
+
+.sync-status {
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sync-status--complete {
+  background: #e8f7f0;
+  color: #27845f;
+}
+
+.sync-status--incomplete {
+  background: #fff3e8;
+  color: #a45b20;
+}
+
 .page-heading {
   display: flex;
   align-items: flex-end;
