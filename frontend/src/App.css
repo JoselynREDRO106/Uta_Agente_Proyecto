@@ -252,6 +252,48 @@
   width: 100%;
 }
 
+.course-sync-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 9px;
+}
+
+.course-sync-form label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.course-sync-form input {
+  width: 125px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+}
+
+.course-sync-form .button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.course-message {
+  margin: 0 17px 12px;
+  font-size: 12px;
+}
+
+.course-message--error {
+  color: #b94a48;
+}
+
+.course-message--success {
+  color: #27845f;
+}
+
 .connection-banner {
   display: flex;
   min-height: 42px;
@@ -844,6 +886,15 @@ td strong {
 
   .page-heading .button {
     align-self: stretch;
+  }
+
+  .course-sync-form {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .course-sync-form .button {
+    align-self: auto;
   }
 
   .connection-banner {

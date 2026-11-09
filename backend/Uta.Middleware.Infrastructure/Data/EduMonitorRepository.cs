@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Uta.Middleware.Application.DTOs;
 using Uta.Middleware.Application.DTOs.Moodle;
 using Uta.Middleware.Application.Interfaces;
 
@@ -6,6 +7,22 @@ namespace Uta.Middleware.Infrastructure.Data;
 
 internal sealed class EduMonitorRepository(EduMonitorDbContext dbContext) : IEduMonitorRepository
 {
+    public async Task<IReadOnlyCollection<CursoDto>> GetCoursesAsync(
+        CancellationToken cancellationToken = default) =>
+        await dbContext.Cursos
+            .AsNoTracking()
+            .OrderBy(course => course.Name)
+            .Select(course => new CursoDto(course.MoodleId, course.Name))
+            .ToListAsync(cancellationToken);
+
+    public async Task<CursoDto> SaveCourseAsync(
+        MoodleCourseDto course,
+        CancellationToken cancellationToken = default)
+    {
+        var row = await EnsureCourseAsync(course, cancellationToken);
+        return new CursoDto(row.MoodleId, row.Name);
+    }
+
     public async Task SaveGradesAsync(
         MoodleCourseDto course,
         IReadOnlyCollection<MoodleEnrolledUserDto> users,

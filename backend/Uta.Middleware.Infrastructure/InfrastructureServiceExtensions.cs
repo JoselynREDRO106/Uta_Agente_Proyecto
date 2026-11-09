@@ -43,6 +43,7 @@ public static class InfrastructureServiceExtensions
         // Registrar casos de uso
         services.AddScoped<ISincronizarCalificacionesUseCase, SincronizarCalificacionesUseCase>();
         services.AddScoped<ISincronizarMapeoTematicoUseCase, SincronizarMapeoTematicoUseCase>();
+        services.AddScoped<IGestionarCursosUseCase, GestionarCursosUseCase>();
 
         return services;
     }

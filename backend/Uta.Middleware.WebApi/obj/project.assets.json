@@ -3230,24 +3230,31 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Joss\\.nuget\\packages\\": {}
+    "C:\\Users\\Joss\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "c:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.WebApi\\Uta.Middleware.WebApi.csproj",
+      "projectUniqueName": "C:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.WebApi\\Uta.Middleware.WebApi.csproj",
       "projectName": "Uta.Middleware.WebApi",
-      "projectPath": "c:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.WebApi\\Uta.Middleware.WebApi.csproj",
+      "projectPath": "C:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.WebApi\\Uta.Middleware.WebApi.csproj",
       "packagesPath": "C:\\Users\\Joss\\.nuget\\packages\\",
-      "outputPath": "c:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.WebApi\\obj\\",
+      "outputPath": "C:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.WebApi\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "C:\\Users\\Joss\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\Joss\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -3255,11 +3262,11 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "projectReferences": {
-            "c:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.Application\\Uta.Middleware.Application.csproj": {
-              "projectPath": "c:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.Application\\Uta.Middleware.Application.csproj"
+            "C:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.Application\\Uta.Middleware.Application.csproj": {
+              "projectPath": "C:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.Application\\Uta.Middleware.Application.csproj"
             },
-            "c:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.Infrastructure\\Uta.Middleware.Infrastructure.csproj": {
-              "projectPath": "c:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.Infrastructure\\Uta.Middleware.Infrastructure.csproj"
+            "C:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.Infrastructure\\Uta.Middleware.Infrastructure.csproj": {
+              "projectPath": "C:\\Users\\Joss\\Documents\\SOFTWARE\\4to SEMESTRE\\METODOLOGIAS AGILES\\UNIDAD_II\\Prueba_plantilla_Clean Architecture\\UTA_Agente\\backend\\Uta.Middleware.Infrastructure\\Uta.Middleware.Infrastructure.csproj"
             }
           }
         }
@@ -3311,7 +3318,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.403/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.AspNetCore": "(,10.0.32767]",
           "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
