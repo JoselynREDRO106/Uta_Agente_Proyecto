@@ -1,15 +1,29 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { getCourses, getCurrentUser, getHealth, syncMoodleCourse } from '../services/api.js'
 import { Link } from 'react-router-dom'
-import { getHealth } from '../services/api.js'
-
-const courses = [
-  { id: '1', name: 'Servicios Web', code: 'SW-4B', students: 28, average: '82.4', progress: 68, color: 'violet' },
-  { id: '2', name: 'Bases de Datos', code: 'BD-4B', students: 25, average: '76.8', progress: 54, color: 'blue' },
-  { id: '3', name: 'Ingeniería de Software', code: 'IS-4B', students: 31, average: '88.1', progress: 81, color: 'green' },
-]
 
 function Cursos() {
+  const isAdministrator = getCurrentUser()?.rol === 'Administrador técnico'
   const [health, setHealth] = useState({ status: 'loading', message: 'Comprobando conexión…' })
+  const [courses, setCourses] = useState([])
+  const [coursesLoading, setCoursesLoading] = useState(true)
+  const [coursesError, setCoursesError] = useState('')
+  const [courseId, setCourseId] = useState('')
+  const [syncing, setSyncing] = useState(false)
+  const [syncMessage, setSyncMessage] = useState('')
+
+  const loadCourses = useCallback(async () => {
+    setCoursesLoading(true)
+    setCoursesError('')
+
+    try {
+      setCourses(await getCourses())
+    } catch (error) {
+      setCoursesError(error.message)
+    } finally {
+      setCoursesLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -26,10 +40,45 @@ function Cursos() {
         }
       })
 
+    getCourses()
+      .then((result) => {
+        if (active) {
+          setCourses(result)
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setCoursesError(error.message)
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setCoursesLoading(false)
+        }
+      })
+
     return () => {
       active = false
     }
-  }, [])
+  }, [loadCourses])
+
+  async function handleSync(event) {
+    event.preventDefault()
+    setSyncMessage('')
+    setCoursesError('')
+    setSyncing(true)
+
+    try {
+      const course = await syncMoodleCourse(courseId)
+      setSyncMessage(`Curso "${course.name}" sincronizado correctamente.`)
+      setCourseId('')
+      await loadCourses()
+    } catch (error) {
+      setCoursesError(error.message)
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   return (
     <>
@@ -37,11 +86,22 @@ function Cursos() {
         <div>
           <span className="eyebrow">RESUMEN ACADÉMICO</span>
           <h1>Mis cursos</h1>
-          <p className="muted">Monitorea el rendimiento y el avance de tus asignaturas.</p>
+          <p className="muted">Cursos sincronizados desde Moodle y guardados en EduMonitor.</p>
         </div>
-        <button className="button button--primary" type="button" onClick={() => window.location.reload()}>
-          <span aria-hidden="true">↻</span> Sincronizar
-        </button>
+        {isAdministrator && <form className="course-sync-form" onSubmit={handleSync}>
+          <label htmlFor="moodle-course-id">ID del curso en Moodle</label>
+          <input
+            id="moodle-course-id"
+            min="1"
+            onChange={(event) => setCourseId(event.target.value)}
+            required
+            type="number"
+            value={courseId}
+          />
+          <button className="button button--primary" disabled={syncing} type="submit">
+            {syncing ? 'Sincronizando…' : 'Sincronizar curso'}
+          </button>
+        </form>}
       </div>
 
       <div className={`connection-banner connection-banner--${health.status}`} role="status">
@@ -54,38 +114,42 @@ function Cursos() {
         <div className="card-heading">
           <div>
             <h2 id="courses-title">Asignaturas activas</h2>
-            <p className="muted">Periodo académico actual</p>
+            <p className="muted">Listado guardado en la base de datos de EduMonitor</p>
           </div>
           <span className="count-pill">{courses.length} cursos</span>
         </div>
+        {coursesError && <p className="course-message course-message--error" role="alert">{coursesError}</p>}
+        {syncMessage && <p className="course-message course-message--success" role="status">{syncMessage}</p>}
         <div className="table-scroll">
           <table>
             <thead>
-              <tr><th>Asignatura</th><th>Estudiantes</th><th>Promedio</th><th>Finalización</th><th /></tr>
+              <tr><th>Asignatura</th><th>ID en Moodle</th><th /></tr>
             </thead>
             <tbody>
-              {courses.map((course) => (
+              {coursesLoading && (
+                <tr><td colSpan="3">Cargando cursos…</td></tr>
+              )}
+              {!coursesLoading && courses.map((course) => (
                 <tr key={course.id}>
                   <td>
                     <Link className="course-cell" to={`/cursos/${course.id}`}>
-                      <span className={`course-icon course-icon--${course.color}`} aria-hidden="true">▦</span>
-                      <span><strong>{course.name}</strong><small>{course.code}</small></span>
+                      <span className="course-icon course-icon--blue" aria-hidden="true">▦</span>
+                      <span><strong>{course.name}</strong></span>
                     </Link>
                   </td>
-                  <td>{course.students} <span className="muted">estudiantes</span></td>
-                  <td><span className="grade-value">{course.average}</span><span className="muted"> / 100</span></td>
-                  <td>
-                    <div className="progress-cell"><span className="progress-track"><span style={{ width: `${course.progress}%` }} /></span><small>{course.progress}%</small></div>
-                  </td>
-                  <td><Link aria-label={`Ver ${course.name}`} className="icon-link" to={`/cursos/${course.id}`}>↗</Link></td>
+                  <td>{course.id}</td>
+                  <td><Link aria-label={`Consultar ${course.name}`} className="icon-link" to={`/cursos/${course.id}`}>↗</Link></td>
                 </tr>
               ))}
+              {!coursesLoading && !coursesError && courses.length === 0 && (
+                <tr><td colSpan="3">{isAdministrator ? 'No hay cursos sincronizados. Ingresa arriba el ID de un curso de Moodle.' : 'No tienes cursos asignados. Solicita acceso al administrador técnico.'}</td></tr>
+              )}
             </tbody>
           </table>
         </div>
       </section>
 
-      <p className="page-footnote">Los datos de cursos mostrados son de ejemplo para la interfaz inicial.</p>
+      <p className="page-footnote">Los cursos disponibles provienen de Moodle y están limitados a los permisos de tu cuenta.</p>
     </>
   )
 }

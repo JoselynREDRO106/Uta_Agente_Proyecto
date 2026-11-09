@@ -141,6 +141,10 @@
   margin-left: auto;
   color: var(--muted);
   font-weight: 700;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
 }
 
 .main-panel {
@@ -250,6 +254,133 @@
 
 .button--wide {
   width: 100%;
+}
+
+.course-sync-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 9px;
+}
+
+.course-sync-form label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.course-sync-form input {
+  width: 125px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+}
+
+.course-sync-form .button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.course-message {
+  margin: 0 17px 12px;
+  font-size: 12px;
+}
+
+.course-message--error {
+  color: #b94a48;
+}
+
+.course-message--success {
+  color: #27845f;
+}
+
+.course-message--warning {
+  padding: 12px 16px;
+  border: 1px solid #f1dfb8;
+  border-radius: 8px;
+  background: #fffaf0;
+  color: #88631d;
+}
+
+.student-filters {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 22px 16px;
+}
+
+.student-filters label {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.student-filters input,
+.student-filters select {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+}
+
+.student-filters input {
+  min-width: 180px;
+}
+
+.indicator-distribution,
+.student-list {
+  margin-top: 20px;
+}
+
+.distribution-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  padding: 0 22px 20px;
+}
+
+.distribution-item {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.distribution-item strong {
+  color: var(--ink);
+  font-size: 22px;
+}
+
+.distribution-item small {
+  font-size: 10px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 22px;
+  border-top: 1px solid #f0f2f7;
+}
+
+.pagination > div {
+  display: flex;
+  gap: 8px;
+}
+
+.pagination .button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .connection-banner {
@@ -844,6 +975,15 @@ td strong {
 
   .page-heading .button {
     align-self: stretch;
+  }
+
+  .course-sync-form {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .course-sync-form .button {
+    align-self: auto;
   }
 
   .connection-banner {

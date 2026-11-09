@@ -10,6 +10,10 @@ public sealed class EduMonitorDbContext(DbContextOptions<EduMonitorDbContext> op
     internal DbSet<ActividadRow> Actividades => Set<ActividadRow>();
     internal DbSet<CalificacionRow> Calificaciones => Set<CalificacionRow>();
     internal DbSet<MapeoTematicoRow> MapeosTematicos => Set<MapeoTematicoRow>();
+    internal DbSet<MatriculaRow> Matriculas => Set<MatriculaRow>();
+    internal DbSet<UsuarioSistemaRow> UsuariosSistema => Set<UsuarioSistemaRow>();
+    internal DbSet<AsignacionCursoRow> AsignacionesCurso => Set<AsignacionCursoRow>();
+    internal DbSet<SincronizacionRow> Sincronizaciones => Set<SincronizacionRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +48,7 @@ public sealed class EduMonitorDbContext(DbContextOptions<EduMonitorDbContext> op
             entity.Property(row => row.CourseId).HasColumnName("id_curso");
             entity.Property(row => row.Name).HasColumnName("nombre").HasMaxLength(200);
             entity.Property(row => row.Category).HasColumnName("categoria").HasMaxLength(30);
+            entity.Property(row => row.MaxGrade).HasColumnName("nota_maxima").HasPrecision(5, 2);
             entity.HasIndex(row => row.MoodleId).IsUnique().HasDatabaseName("UQ_ACTIVIDAD_id_moodle");
             entity.HasOne<CursoRow>().WithMany().HasForeignKey(row => row.CourseId)
                 .HasConstraintName("FK_ACTIVIDAD_CURSO");
@@ -80,6 +85,58 @@ public sealed class EduMonitorDbContext(DbContextOptions<EduMonitorDbContext> op
                 .HasConstraintName("FK_MAPEO_TEMATICO_ACTIVIDAD");
             entity.HasIndex(row => row.ActivityId).HasDatabaseName("IX_MAPEO_TEMATICO_id_actividad");
         });
+
+        modelBuilder.Entity<MatriculaRow>(entity =>
+        {
+            entity.ToTable("MATRICULA", "dbo");
+            entity.HasKey(row => new { row.CourseId, row.UserId }).HasName("PK_MATRICULA");
+            entity.Property(row => row.CourseId).HasColumnName("id_curso");
+            entity.Property(row => row.UserId).HasColumnName("id_usuario");
+            entity.HasOne<CursoRow>().WithMany().HasForeignKey(row => row.CourseId)
+                .HasConstraintName("FK_MATRICULA_CURSO");
+            entity.HasOne<UsuarioRow>().WithMany().HasForeignKey(row => row.UserId)
+                .HasConstraintName("FK_MATRICULA_USUARIO");
+        });
+
+        modelBuilder.Entity<UsuarioSistemaRow>(entity =>
+        {
+            entity.ToTable("USUARIO_SISTEMA", "dbo");
+            entity.HasKey(row => row.Id).HasName("PK_USUARIO_SISTEMA");
+            entity.Property(row => row.Id).HasColumnName("id_usuario_sistema");
+            entity.Property(row => row.Name).HasColumnName("nombre").HasMaxLength(150);
+            entity.Property(row => row.Email).HasColumnName("email").HasMaxLength(254);
+            entity.Property(row => row.PasswordHash).HasColumnName("clave_hash").HasMaxLength(256);
+            entity.Property(row => row.Role).HasColumnName("rol").HasMaxLength(40);
+            entity.Property(row => row.IsActive).HasColumnName("activo");
+            entity.HasIndex(row => row.Email).IsUnique().HasDatabaseName("UQ_USUARIO_SISTEMA_email");
+        });
+
+        modelBuilder.Entity<AsignacionCursoRow>(entity =>
+        {
+            entity.ToTable("ASIGNACION_DOCENTE_CURSO", "dbo");
+            entity.HasKey(row => new { row.UserId, row.CourseId }).HasName("PK_ASIGNACION_DOCENTE_CURSO");
+            entity.Property(row => row.UserId).HasColumnName("id_usuario_sistema");
+            entity.Property(row => row.CourseId).HasColumnName("id_curso");
+            entity.HasOne<UsuarioSistemaRow>().WithMany().HasForeignKey(row => row.UserId)
+                .HasConstraintName("FK_ASIGNACION_USUARIO_SISTEMA");
+            entity.HasOne<CursoRow>().WithMany().HasForeignKey(row => row.CourseId)
+                .HasConstraintName("FK_ASIGNACION_CURSO");
+        });
+
+        modelBuilder.Entity<SincronizacionRow>(entity =>
+        {
+            entity.ToTable("SINCRONIZACION_LOG", "dbo");
+            entity.HasKey(row => row.Id).HasName("PK_SINCRONIZACION_LOG");
+            entity.Property(row => row.Id).HasColumnName("id_sincronizacion");
+            entity.Property(row => row.CourseId).HasColumnName("id_curso");
+            entity.Property(row => row.CompletedAtUtc).HasColumnName("fecha_utc");
+            entity.Property(row => row.Status).HasColumnName("resultado").HasMaxLength(20);
+            entity.Property(row => row.ErrorSummary).HasColumnName("errores").HasMaxLength(1000);
+            entity.HasOne<CursoRow>().WithMany().HasForeignKey(row => row.CourseId)
+                .HasConstraintName("FK_SINCRONIZACION_LOG_CURSO");
+            entity.HasIndex(row => new { row.CourseId, row.CompletedAtUtc })
+                .HasDatabaseName("IX_SINCRONIZACION_LOG_CURSO_FECHA");
+        });
     }
 }
 
@@ -106,6 +163,7 @@ internal sealed class ActividadRow
     public int CourseId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
+    public decimal? MaxGrade { get; set; }
 }
 
 internal sealed class CalificacionRow
@@ -122,4 +180,35 @@ internal sealed class MapeoTematicoRow
     public int Id { get; set; }
     public int ActivityId { get; set; }
     public string MinimumContent { get; set; } = string.Empty;
+}
+
+internal sealed class MatriculaRow
+{
+    public int CourseId { get; set; }
+    public int UserId { get; set; }
+}
+
+internal sealed class UsuarioSistemaRow
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+}
+
+internal sealed class AsignacionCursoRow
+{
+    public int UserId { get; set; }
+    public int CourseId { get; set; }
+}
+
+internal sealed class SincronizacionRow
+{
+    public int Id { get; set; }
+    public int CourseId { get; set; }
+    public DateTime CompletedAtUtc { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string? ErrorSummary { get; set; }
 }

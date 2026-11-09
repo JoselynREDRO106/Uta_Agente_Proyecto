@@ -64,5 +64,23 @@ WHERE NOT EXISTS (
       AND existing.id_actividad = activity_record.id_actividad
 );
 
+INSERT INTO dbo.MATRICULA (id_curso, id_usuario)
+SELECT course.id_curso, user_record.id_usuario
+FROM dbo.CURSO AS course
+CROSS JOIN dbo.USUARIO AS user_record
+WHERE course.id_moodle = 1001
+  AND user_record.id_moodle IN (2001, 2002, 2003)
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dbo.MATRICULA AS existing
+      WHERE existing.id_curso = course.id_curso
+        AND existing.id_usuario = user_record.id_usuario
+  );
+
+UPDATE dbo.ACTIVIDAD
+SET nota_maxima = 100
+WHERE id_moodle IN (3001, 3002, 3003)
+  AND nota_maxima IS NULL;
+
 COMMIT TRANSACTION;
 GO

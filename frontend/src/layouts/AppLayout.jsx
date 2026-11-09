@@ -1,6 +1,15 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { getCurrentUser, logout } from '../services/api.js'
 
 function AppLayout() {
+  const navigate = useNavigate()
+  const user = getCurrentUser()
+
+  function handleLogout() {
+    logout()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -21,9 +30,9 @@ function AppLayout() {
         </nav>
 
         <div className="sidebar__footer">
-          <div className="profile-avatar">DR</div>
-          <span><strong>Docente</strong><small>Panel académico</small></span>
-          <span className="profile-menu" aria-hidden="true">···</span>
+          <div className="profile-avatar">{user?.nombre?.slice(0, 1).toUpperCase() ?? 'U'}</div>
+          <span><strong>{user?.nombre ?? 'Usuario'}</strong><small>{user?.rol ?? 'Panel académico'}</small></span>
+          <button className="profile-menu" onClick={handleLogout} type="button">Salir</button>
         </div>
       </aside>
 

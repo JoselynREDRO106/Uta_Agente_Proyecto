@@ -25,6 +25,7 @@ public static class InfrastructureServiceExtensions
         services.AddDbContext<EduMonitorDbContext>(options =>
             options.UseSqlServer(connectionString));
         services.AddScoped<IEduMonitorRepository, EduMonitorRepository>();
+        services.AddScoped<IAuthenticationRepository, AuthenticationRepository>();
 
         // Enlazar configuración de Moodle usando la sección del appsettings.json
         var moodleSection = configuration.GetSection(MoodleSettings.SectionName);
@@ -43,6 +44,7 @@ public static class InfrastructureServiceExtensions
         // Registrar casos de uso
         services.AddScoped<ISincronizarCalificacionesUseCase, SincronizarCalificacionesUseCase>();
         services.AddScoped<ISincronizarMapeoTematicoUseCase, SincronizarMapeoTematicoUseCase>();
+        services.AddScoped<IGestionarCursosUseCase, GestionarCursosUseCase>();
 
         return services;
     }

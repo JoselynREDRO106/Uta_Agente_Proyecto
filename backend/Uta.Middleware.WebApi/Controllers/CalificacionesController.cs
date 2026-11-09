@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Text.Json;
 using Uta.Middleware.Application.Interfaces;
 using Uta.Middleware.Domain.Entities;
 
@@ -9,17 +11,21 @@ namespace Uta.Middleware.WebApi.Controllers;
 /// Endpoint principal: HU-001 - Ingesta de datos desde core_grades_get_grades.
 /// </summary>
 [ApiController]
+[Authorize(Roles = "Administrador técnico")]
 [Route("api/[controller]")]
 public class CalificacionesController : ControllerBase
 {
     private readonly ISincronizarCalificacionesUseCase _sincronizarCalificaciones;
+    private readonly IEduMonitorRepository _repository;
     private readonly ILogger<CalificacionesController> _logger;
 
     public CalificacionesController(
         ISincronizarCalificacionesUseCase sincronizarCalificaciones,
+        IEduMonitorRepository repository,
         ILogger<CalificacionesController> logger)
     {
         _sincronizarCalificaciones = sincronizarCalificaciones;
+        _repository = repository;
         _logger = logger;
     }
 
@@ -56,10 +62,23 @@ public class CalificacionesController : ControllerBase
         }
         catch (HttpRequestException ex)
         {
+            await _repository.RecordSyncAsync(
+                courseId, "Incompleta", "No se pudieron consultar las calificaciones en Moodle.",
+                cancellationToken);
             _logger.LogError(ex,
                 "Error al conectarse a Moodle para el curso {CourseId}.", courseId);
             return StatusCode(StatusCodes.Status502BadGateway,
                 "No se pudo conectar con el servidor Moodle. Verifique la configuración.");
+        }
+        catch (JsonException ex)
+        {
+            await _repository.RecordSyncAsync(
+                courseId, "Incompleta", "Moodle devolvió datos de calificaciones con formato inválido.",
+                cancellationToken);
+            _logger.LogError(ex,
+                "Moodle devolvió datos de calificaciones inválidos para el curso {CourseId}.", courseId);
+            return StatusCode(StatusCodes.Status502BadGateway,
+                "Moodle devolvió una respuesta inválida.");
         }
     }
 }

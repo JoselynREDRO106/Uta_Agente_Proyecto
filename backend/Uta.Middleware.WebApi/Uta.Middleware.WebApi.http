@@ -4,3 +4,13 @@ GET {{Uta.Middleware.WebApi_HostAddress}}/health
 Accept: application/json
 
 ###
+
+GET {{Uta.Middleware.WebApi_HostAddress}}/api/cursos
+Accept: application/json
+
+###
+
+POST {{Uta.Middleware.WebApi_HostAddress}}/api/cursos/sincronizar/2
+Accept: application/json
+
+###
