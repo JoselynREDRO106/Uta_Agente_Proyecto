@@ -16,13 +16,15 @@ npm install
 npm run dev
 ```
 
-Vite inicia la interfaz en `http://localhost:5173`. La variable `VITE_API_URL` apunta al middleware; la pantalla de cursos muestra el resultado de `GET /health`. Si el backend no esta iniciado, el estado de conexion presenta el error.
+Vite inicia la interfaz en `http://localhost:5173`. Define `VITE_API_URL=http://localhost:5000` para conectar con la API. La pantalla consulta `GET /health` y `GET /api/cursos`; si la API o SQL Server no estan disponibles, muestra el error.
+
+Para importar un curso, escribe su ID de Moodle en el formulario y pulsa **Sincronizar curso**. El frontend solicita `POST /api/cursos/sincronizar/{courseId}`; el backend obtiene el curso desde Moodle y lo guarda en SQL Server. Luego la pantalla vuelve a consultar `GET /api/cursos` y muestra los cursos guardados. La URL y el token de Moodle se configuran solo en el backend.
 
 ## Rutas
 
 - `/login`: inicio de sesion de demostracion.
-- `/cursos`: listado y estado de conexion al middleware.
+- `/cursos`: cursos sincronizados y estado de conexion al middleware.
 - `/cursos/:id`: resumen y seguimiento del curso.
 - `/estudiantes/:id`: ficha individual y actividades.
 
-Los registros mostrados son datos de ejemplo para la estructura inicial del Sprint 1.
+Las vistas de seguimiento de curso y estudiante siguen siendo de demostracion.
