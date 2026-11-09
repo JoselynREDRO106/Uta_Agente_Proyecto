@@ -31,6 +31,15 @@ internal sealed class EduMonitorRepository(EduMonitorDbContext dbContext) : IEdu
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<CursoDto>> GetCoursesForMoodleIdsAsync(
+        IReadOnlyCollection<int> moodleCourseIds,
+        CancellationToken cancellationToken = default) =>
+        await dbContext.Cursos.AsNoTracking()
+            .Where(course => moodleCourseIds.Contains(course.MoodleId))
+            .OrderBy(course => course.Name)
+            .Select(course => new CursoDto(course.MoodleId, course.Name))
+            .ToListAsync(cancellationToken);
+
     public Task<bool> IsCourseAssignedAsync(
         int userId,
         int moodleCourseId,
@@ -40,6 +49,12 @@ internal sealed class EduMonitorRepository(EduMonitorDbContext dbContext) : IEdu
                 && dbContext.Cursos.Any(course =>
                     course.Id == assignment.CourseId && course.MoodleId == moodleCourseId),
             cancellationToken);
+
+    public Task<bool> IsCourseAssignedByMoodleIdAsync(
+        IReadOnlyCollection<int> moodleCourseIds,
+        int moodleCourseId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(moodleCourseIds.Contains(moodleCourseId));
 
     public async Task<PaginaDto<EstudianteCursoDto>> GetCourseStudentsAsync(
         int moodleCourseId,

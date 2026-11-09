@@ -5,6 +5,8 @@ public class MoodleCourseDto
     public int Id { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string ShortName { get; set; } = string.Empty;
+    public long StartDate { get; set; }
+    public long EndDate { get; set; }
 }
 
 public class MoodleEnrolledUserDto

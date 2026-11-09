@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Security.Claims;
+using System.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Uta.Middleware.Application.DTOs;
@@ -14,7 +15,9 @@ namespace Uta.Middleware.WebApi.Controllers;
 public sealed class CursosController(
     IGestionarCursosUseCase gestionarCursos,
     IEduMonitorRepository repository,
-    ILogger<CursosController> logger) : ControllerBase
+    ILogger<CursosController> logger,
+    IAnalysisQueryClient? analysisQueries = null,
+    IMoodleAcademicSyncClient? integrationSync = null) : ControllerBase
 {
     /// <summary>Lista los cursos sincronizados y guardados en EduMonitor.</summary>
     [HttpGet]
@@ -22,10 +25,40 @@ public sealed class CursosController(
     public async Task<ActionResult<IReadOnlyCollection<CursoResponse>>> ObtenerCursos(
         CancellationToken cancellationToken)
     {
-        int? userId = User.IsInRole("Administrador técnico")
-            ? null
-            : int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var courses = await gestionarCursos.ObtenerAsync(userId, cancellationToken);
+        var isAdmin = User.IsInRole("Administrador técnico");
+        if (analysisQueries is not null
+            && (isAdmin || User.HasClaim("course_assignments", "managed")))
+        {
+            try
+            {
+                var coursesFromAnalysis = await analysisQueries.GetCoursesAsync(GetBearerToken(), cancellationToken);
+                return Ok(coursesFromAnalysis.Select(course =>
+                    new CursoResponse(course.MoodleId, course.Name)).ToArray());
+            }
+            catch (HttpRequestException exception)
+            {
+                return DownstreamFailure("Análisis", exception);
+            }
+            catch (JsonException exception)
+            {
+                return DownstreamInvalidResponse("Análisis", exception);
+            }
+        }
+
+        IReadOnlyCollection<CursoDto> courses;
+        if (!isAdmin && User.HasClaim("course_assignments", "managed"))
+        {
+            courses = await repository.GetCoursesForMoodleIdsAsync(
+                GetMoodleCourseIdsFromClaims(), cancellationToken);
+        }
+        else
+        {
+            int? userId = isAdmin
+                ? null
+                : int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            courses = await gestionarCursos.ObtenerAsync(userId, cancellationToken);
+        }
+
         return Ok(courses.Select(course => new CursoResponse(course.MoodleId, course.Name)).ToArray());
     }
 
@@ -39,6 +72,22 @@ public sealed class CursosController(
         if (limit is < 1 or > 100)
         {
             return BadRequest("El límite debe estar entre 1 y 100.");
+        }
+
+        if (integrationSync is not null)
+        {
+            try
+            {
+                return Ok(await integrationSync.GetSyncHistoryAsync(limit, cancellationToken));
+            }
+            catch (HttpRequestException exception)
+            {
+                return DownstreamFailure("Integración Moodle", exception);
+            }
+            catch (JsonException exception)
+            {
+                return DownstreamInvalidResponse("Integración Moodle", exception);
+            }
         }
 
         return Ok(await repository.GetSyncHistoryAsync(limit, cancellationToken));
@@ -73,6 +122,29 @@ public sealed class CursosController(
             return BadRequest("El filtro status debe ser calificado, pendiente, sin_entrega o sin_datos.");
         }
 
+        if (analysisQueries is not null && User.HasClaim("course_assignments", "managed"))
+        {
+            try
+            {
+                return Ok(await analysisQueries.GetCourseStudentsAsync(
+                    courseId,
+                    search,
+                    status?.Trim().ToLowerInvariant(),
+                    page,
+                    pageSize,
+                    GetBearerToken(),
+                    cancellationToken));
+            }
+            catch (HttpRequestException exception)
+            {
+                return DownstreamFailure("Análisis", exception);
+            }
+            catch (JsonException exception)
+            {
+                return DownstreamInvalidResponse("Análisis", exception);
+            }
+        }
+
         return Ok(await repository.GetCourseStudentsAsync(
             courseId, search, status?.Trim().ToLowerInvariant(), page, pageSize, cancellationToken));
     }
@@ -90,7 +162,28 @@ public sealed class CursosController(
             return Forbid();
         }
 
-        var indicators = await repository.GetCourseIndicatorsAsync(courseId, cancellationToken);
+        IndicadoresCursoDto? indicators;
+        if (analysisQueries is not null && User.HasClaim("course_assignments", "managed"))
+        {
+            try
+            {
+                indicators = await analysisQueries.GetCourseIndicatorsAsync(
+                    courseId, GetBearerToken(), cancellationToken);
+            }
+            catch (HttpRequestException exception)
+            {
+                return DownstreamFailure("Análisis", exception);
+            }
+            catch (JsonException exception)
+            {
+                return DownstreamInvalidResponse("Análisis", exception);
+            }
+        }
+        else
+        {
+            indicators = await repository.GetCourseIndicatorsAsync(courseId, cancellationToken);
+        }
+
         return indicators is null ? NotFound() : Ok(indicators);
     }
 
@@ -140,9 +233,53 @@ public sealed class CursosController(
             return true;
         }
 
+        if (User.HasClaim("course_assignments", "managed"))
+        {
+            return GetMoodleCourseIdsFromClaims().Contains(courseId);
+        }
+
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         return int.TryParse(userId, out var parsedUserId)
             && await repository.IsCourseAssignedAsync(parsedUserId, courseId, cancellationToken);
+    }
+
+    private IReadOnlyCollection<int> GetMoodleCourseIdsFromClaims() =>
+        User.FindAll("course_id")
+            .Select(claim => int.TryParse(claim.Value, out var courseId) ? courseId : 0)
+            .Where(courseId => courseId > 0)
+            .Distinct()
+            .ToArray();
+
+    private string? GetBearerToken()
+    {
+        var authorization = Request.Headers.Authorization.ToString();
+        return authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? authorization["Bearer ".Length..].Trim()
+            : null;
+    }
+
+    private ObjectResult DownstreamFailure(string service, HttpRequestException exception)
+    {
+        logger.LogError(exception, "El servicio {Service} no pudo completar la solicitud.", service);
+        var statusCode = exception.StatusCode switch
+        {
+            HttpStatusCode.NotFound => StatusCodes.Status404NotFound,
+            HttpStatusCode.Forbidden => StatusCodes.Status403Forbidden,
+            HttpStatusCode.BadRequest => StatusCodes.Status400BadRequest,
+            null => StatusCodes.Status503ServiceUnavailable,
+            _ => StatusCodes.Status502BadGateway
+        };
+        return Problem(
+            title: $"El servicio de {service} no está disponible.",
+            statusCode: statusCode);
+    }
+
+    private ObjectResult DownstreamInvalidResponse(string service, JsonException exception)
+    {
+        logger.LogError(exception, "El servicio {Service} devolvió datos inválidos.", service);
+        return Problem(
+            title: $"El servicio de {service} devolvió una respuesta inválida.",
+            statusCode: StatusCodes.Status502BadGateway);
     }
 }
 
