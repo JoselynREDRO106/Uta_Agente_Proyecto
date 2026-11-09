@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Uta.Middleware.Application.Interfaces;
 using Uta.Middleware.Domain.Entities;
 
@@ -9,6 +10,7 @@ namespace Uta.Middleware.WebApi.Controllers;
 /// Usa core_course_get_contents para obtener secciones y módulos (unidades temáticas).
 /// </summary>
 [ApiController]
+[Authorize(Roles = "Administrador técnico")]
 [Route("api/[controller]")]
 public class MapeoTematicoController : ControllerBase
 {

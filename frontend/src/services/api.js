@@ -1,4 +1,6 @@
 const apiUrl = import.meta.env.VITE_API_URL
+const accessTokenKey = 'edumonitor.accessToken'
+const userKey = 'edumonitor.user'
 
 function getApiUrl() {
   if (!apiUrl) {
@@ -9,7 +11,13 @@ function getApiUrl() {
 }
 
 async function requestJson(path, options) {
-  const response = await fetch(`${getApiUrl()}${path}`, options)
+  const headers = new Headers(options?.headers)
+  const accessToken = sessionStorage.getItem(accessTokenKey)
+  if (accessToken) {
+    headers.set('Authorization', `Bearer ${accessToken}`)
+  }
+
+  const response = await fetch(`${getApiUrl()}${path}`, { ...options, headers })
   const body = await response.text()
   let result = null
 
@@ -53,4 +61,41 @@ export async function syncMoodleCourse(courseId) {
   return requestJson(`/api/cursos/sincronizar/${encodeURIComponent(courseId)}`, {
     method: 'POST',
   })
+}
+
+export async function login(email, password) {
+  const result = await requestJson('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+
+  sessionStorage.setItem(accessTokenKey, result.accessToken)
+  sessionStorage.setItem(userKey, JSON.stringify({ nombre: result.nombre, rol: result.rol }))
+  return result
+}
+
+export function logout() {
+  sessionStorage.removeItem(accessTokenKey)
+  sessionStorage.removeItem(userKey)
+}
+
+export function getCurrentUser() {
+  const value = sessionStorage.getItem(userKey)
+  return value ? JSON.parse(value) : null
+}
+
+export function hasSession() {
+  return Boolean(sessionStorage.getItem(accessTokenKey))
+}
+
+export async function getCourseStudents(courseId, { search = '', status = '', page = 1, pageSize = 10 } = {}) {
+  const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+  if (search.trim()) query.set('search', search.trim())
+  if (status) query.set('status', status)
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/estudiantes?${query}`)
+}
+
+export async function getCourseIndicators(courseId) {
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/indicadores`)
 }

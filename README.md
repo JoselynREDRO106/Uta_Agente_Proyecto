@@ -1,6 +1,6 @@
 # EduMonitor AI
 
-Sistema de seguimiento y análisis del rendimiento académico integrado con Moodle. El Sprint 1 deja preparada la base técnica del proyecto; las pantallas actuales de React usan datos de demostración y el acceso es simulado.
+Sistema de seguimiento y análisis del rendimiento académico integrado con Moodle. El backend ofrece autenticación JWT, sincronización y consultas académicas protegidas por rol/curso. La instancia de Moodle y SQL Server son necesarias para validar el flujo completo.
 
 ## Requisitos
 
@@ -35,7 +35,7 @@ sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\001_schema.sql
 sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\002_seed.sql
 ```
 
-`-E` usa la identidad de Windows con la que se ejecuta la terminal y la API. `-C` confía en el certificado local de SQL Server. La configuración está en `backend/Uta.Middleware.WebApi/appsettings.Development.json`; cambia el servidor si tu instancia tiene otro nombre. El endpoint `http://localhost:5000/health/database` verifica la conexión. Consulta [database/README.md](database/README.md) para verificar las tablas y los estados de muestra.
+`-E` usa la identidad de Windows con la que se ejecuta la terminal y la API. `-C` confía en el certificado local de SQL Server. La configuración está en `backend/Uta.Middleware.WebApi/appsettings.Development.json`; cambia el servidor si tu instancia tiene otro nombre. El endpoint `http://localhost:5000/health/database` verifica la conexión. Los scripts son idempotentes e incorporan tablas de matrícula, cuentas del sistema, asignación docente-curso, escalas y bitácora. Consulta [database/README.md](database/README.md).
 
 Para usar SQL Server sin Docker, no ejecutes `docker compose` para SQL Server. La instancia local debe estar iniciada y el usuario de Windows debe tener permiso para conectarse y crear/usar la base `EduMonitor`.
 
@@ -65,8 +65,18 @@ dotnet build backend/Uta.AcademicPerformance.Middleware.slnx
 Inicia la API:
 
 ```powershell
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+$jwtBytes = New-Object byte[] 48
+$bootstrapBytes = New-Object byte[] 32
+$rng.GetBytes($jwtBytes)
+$rng.GetBytes($bootstrapBytes)
+$env:Authentication__Jwt__SigningKey = [Convert]::ToBase64String($jwtBytes)
+$env:Authentication__BootstrapKey = [Convert]::ToBase64String($bootstrapBytes)
+$rng.Dispose()
 dotnet run --project backend/Uta.Middleware.WebApi/Uta.Middleware.WebApi.csproj --launch-profile http
 ```
+
+Las dos variables son obligatorias/secretas y deben generarse nuevamente para un entorno propio; no las guardes en el repositorio. La clave de firma debe mantenerse estable entre reinicios para que los tokens emitidos sigan siendo válidos. `Authentication__BootstrapKey` habilita una sola creación inicial de administrador; retírala del entorno después del alta.
 
 Comprueba el endpoint de salud en otra terminal:
 
@@ -76,6 +86,31 @@ Invoke-RestMethod http://localhost:5000/health
 
 La respuesta indica `status: ok` y el servicio `EduMonitor.Middleware`. El middleware habilita CORS para el origen local del frontend (`http://localhost:5173`).
 
+#### Crear las cuentas iniciales
+
+Después de ejecutar los scripts de SQL e iniciar la API, crea el primer administrador usando una contraseña propia de al menos 12 caracteres:
+
+```powershell
+$bootstrapHeaders = @{ 'X-Bootstrap-Key' = $env:Authentication__BootstrapKey }
+$bootstrapBody = @{ email = 'admin@uta.edu.ec'; password = 'USA_UNA_CLAVE_SEGURA_DE_12_CARACTERES_O_MAS' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://localhost:5000/api/auth/bootstrap-admin -Headers $bootstrapHeaders -ContentType 'application/json' -Body $bootstrapBody
+Remove-Item Env:Authentication__BootstrapKey
+```
+
+Inicia sesión desde `/login`. El administrador puede crear docentes y asignarles los IDs Moodle de cursos ya sincronizados mediante `POST /api/auth/usuarios` con `Authorization: Bearer <token>` y un cuerpo como:
+
+```json
+{
+  "nombre": "Docente de prueba",
+  "email": "docente@uta.edu.ec",
+  "password": "USA_UNA_CLAVE_SEGURA_DE_12_CARACTERES_O_MAS",
+  "rol": "Docente",
+  "cursosMoodle": [1001]
+}
+```
+
+El bootstrap devuelve conflicto una vez que ya existe un administrador. La API exige un JWT en todos los endpoints salvo login, bootstrap inicial, salud y OpenAPI de desarrollo. El endpoint de sincronización Moodle requiere el rol `Administrador técnico`; un docente solo puede consultar cursos asignados. El cierre de sesión elimina el token del almacenamiento de sesión del navegador.
+
 Para consultar los servicios Moodle desde el backend, asegúrate de que Moodle esté iniciado y define el token local para el proceso antes de ejecutar .NET:
 
 ```powershell
@@ -84,7 +119,7 @@ $env:MoodleSettings__Token = 'PEGA_AQUI_EL_TOKEN_LOCAL'
 dotnet run --project backend/Uta.Middleware.WebApi/Uta.Middleware.WebApi.csproj --launch-profile http
 ```
 
-Las rutas de sincronización consultan Moodle y guardan cursos, usuarios, actividades, calificaciones y mapeos temáticos en SQL Server. El token debe tener acceso a `core_course_get_courses`, `core_enrol_get_enrolled_users`, `core_grades_get_grades` y `core_course_get_contents`.
+Las rutas de sincronización consultan Moodle y guardan cursos, matrículas, usuarios, actividades, calificaciones, escalas y mapeos temáticos en SQL Server. El token debe tener acceso a `core_course_get_courses`, `core_enrol_get_enrolled_users`, `core_grades_get_grades` y `core_course_get_contents`.
 
 ## Frontend React
 
@@ -99,12 +134,14 @@ npm run dev
 
 Abre `http://localhost:5173`. La página de cursos consulta `/health` y muestra el estado de conexión. También puedes verificar el paquete de producción con `npm run build` y las reglas estáticas con `npm run lint`.
 
-Rutas de demostración:
+Rutas de la aplicación:
 
 - `/login`
 - `/cursos`
 - `/cursos/:id`
-- `/estudiantes/:id`
+- `/estudiantes/:id` (el seguimiento individual detallado permanece fuera del Sprint 1)
+
+Las rutas académicas requieren una sesión válida. El listado de cursos y la vista de curso consultan la API; el dashboard presenta indicadores normalizados a escala 0–100 y estados de matrícula. No se asigna cero a una calificación ausente.
 
 ## Trabajo en equipo
 

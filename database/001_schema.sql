@@ -95,6 +95,75 @@ BEGIN
 END;
 GO
 
+IF COL_LENGTH(N'dbo.ACTIVIDAD', N'nota_maxima') IS NULL
+BEGIN
+    ALTER TABLE dbo.ACTIVIDAD ADD nota_maxima DECIMAL(5,2) NULL;
+END;
+GO
+
+IF OBJECT_ID(N'dbo.MATRICULA', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.MATRICULA
+    (
+        id_curso INT NOT NULL,
+        id_usuario INT NOT NULL,
+        CONSTRAINT PK_MATRICULA PRIMARY KEY (id_curso, id_usuario),
+        CONSTRAINT FK_MATRICULA_CURSO FOREIGN KEY (id_curso) REFERENCES dbo.CURSO(id_curso),
+        CONSTRAINT FK_MATRICULA_USUARIO FOREIGN KEY (id_usuario) REFERENCES dbo.USUARIO(id_usuario)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.USUARIO_SISTEMA', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.USUARIO_SISTEMA
+    (
+        id_usuario_sistema INT IDENTITY(1,1) NOT NULL
+            CONSTRAINT PK_USUARIO_SISTEMA PRIMARY KEY,
+        nombre NVARCHAR(150) NOT NULL,
+        email NVARCHAR(254) NOT NULL
+            CONSTRAINT UQ_USUARIO_SISTEMA_email UNIQUE,
+        clave_hash NVARCHAR(256) NOT NULL,
+        rol NVARCHAR(40) NOT NULL,
+        activo BIT NOT NULL CONSTRAINT DF_USUARIO_SISTEMA_activo DEFAULT (1),
+        CONSTRAINT CK_USUARIO_SISTEMA_rol
+            CHECK (rol IN (N'Docente', N'Administrador técnico'))
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.ASIGNACION_DOCENTE_CURSO', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ASIGNACION_DOCENTE_CURSO
+    (
+        id_usuario_sistema INT NOT NULL,
+        id_curso INT NOT NULL,
+        CONSTRAINT PK_ASIGNACION_DOCENTE_CURSO PRIMARY KEY (id_usuario_sistema, id_curso),
+        CONSTRAINT FK_ASIGNACION_USUARIO_SISTEMA
+            FOREIGN KEY (id_usuario_sistema) REFERENCES dbo.USUARIO_SISTEMA(id_usuario_sistema),
+        CONSTRAINT FK_ASIGNACION_CURSO FOREIGN KEY (id_curso) REFERENCES dbo.CURSO(id_curso)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.SINCRONIZACION_LOG', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.SINCRONIZACION_LOG
+    (
+        id_sincronizacion INT IDENTITY(1,1) NOT NULL
+            CONSTRAINT PK_SINCRONIZACION_LOG PRIMARY KEY,
+        id_curso INT NOT NULL,
+        fecha_utc DATETIME2 NOT NULL,
+        resultado NVARCHAR(20) NOT NULL,
+        errores NVARCHAR(1000) NULL,
+        CONSTRAINT FK_SINCRONIZACION_LOG_CURSO
+            FOREIGN KEY (id_curso) REFERENCES dbo.CURSO(id_curso),
+        CONSTRAINT CK_SINCRONIZACION_LOG_resultado
+            CHECK (resultado IN (N'Completa', N'Incompleta'))
+    );
+END;
+GO
+
 IF NOT EXISTS (
     SELECT 1 FROM sys.indexes
     WHERE name = N'IX_ACTIVIDAD_id_curso'
@@ -125,4 +194,13 @@ IF NOT EXISTS (
       AND object_id = OBJECT_ID(N'dbo.MAPEO_TEMATICO')
 )
     CREATE INDEX IX_MAPEO_TEMATICO_id_actividad ON dbo.MAPEO_TEMATICO(id_actividad);
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = N'IX_SINCRONIZACION_LOG_CURSO_FECHA'
+      AND object_id = OBJECT_ID(N'dbo.SINCRONIZACION_LOG')
+)
+    CREATE INDEX IX_SINCRONIZACION_LOG_CURSO_FECHA
+        ON dbo.SINCRONIZACION_LOG(id_curso, fecha_utc DESC);
 GO

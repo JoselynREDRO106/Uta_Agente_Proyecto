@@ -32,8 +32,12 @@ docker exec -it edumonitor-sql bash -lc '/opt/mssql-tools18/bin/sqlcmd -S localh
 |---|---|
 | `CURSO` | Cursos Moodle, con identificador externo único. |
 | `USUARIO` | Docentes o estudiantes Moodle. |
+| `MATRICULA` | Relación entre cursos y estudiantes obtenida de Moodle. |
 | `ACTIVIDAD` | Actividades y categoría (`Evaluaciones`, `Tareas` o `AP`). |
 | `CALIFICACION` | Nota y estado por estudiante/actividad; los estados son `calificado`, `sin_entrega` y `pendiente`. Una nota cero es válida cuando está calificada. |
 | `MAPEO_TEMATICO` | Asociación de actividades con contenidos mínimos. |
+| `USUARIO_SISTEMA` | Cuentas del middleware con hash de contraseña PBKDF2 y rol. |
+| `ASIGNACION_DOCENTE_CURSO` | Cursos Moodle que puede consultar cada docente del sistema. |
+| `SINCRONIZACION_LOG` | Fecha UTC, resultado y resumen de errores por sincronización. |
 
-El seed crea un curso, tres estudiantes, tres actividades y ejemplos de los tres estados. La nota de calificación puede ser cero; los estados sin entrega y pendiente se guardan sin nota.
+`ACTIVIDAD.nota_maxima` conserva la escala informada por Moodle; las escalas desconocidas permanecen nulas y no se usan para fabricar promedios. El seed crea un curso, tres estudiantes matriculados, tres actividades y ejemplos de los tres estados. La nota de calificación puede ser cero; los estados sin entrega y pendiente se guardan sin nota. Las cuentas del sistema no tienen contraseñas de demostración: el primer administrador se crea con el bootstrap de una sola vez descrito en el README raíz.
