@@ -1271,7 +1271,7 @@ Este compromiso:
 
 # 23. RESULTADOS DEL SPRINT 1
 
-Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/2026). Los campos marcados como **[Completar]** y las casillas ☐ deben ser llenados por el equipo con la evidencia real obtenida durante la ejecución del Sprint. Este documento no declara como realizada ninguna funcionalidad ni prueba que no haya sido verificada.
+Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/2026). La tabla de funcionalidades refleja una revisión del código disponible en la rama de trabajo y no sustituye la evidencia histórica del Sprint. Las casillas de pruebas, retrospectiva y métricas se completan únicamente con resultados ejecutados o datos confirmados por el equipo; esta revisión no declara como realizada ninguna funcionalidad ni prueba sin evidencia.
 
 ## 23.1 HU-01 – Iniciar sesión en el sistema
 
@@ -1281,11 +1281,11 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 
 | Funcionalidad | Tarea | Estado |
 |---|---|---|
-| Estructura de la solución y del repositorio | TA-01.1 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Entidades Usuario y Rol (EF Core) con usuarios de prueba | TA-01.2 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Endpoint POST /auth/login con emisión de JWT | TA-01.3 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Pantalla de inicio de sesión (M-01) | TA-01.4 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Pruebas del inicio y cierre de sesión | TA-01.5 | ☐ Completado ☐ Parcial ☐ No realizado |
+| Estructura de la solución y del repositorio | TA-01.1 | Parcial |
+| Persistencia de usuarios, roles y asignaciones | TA-01.2 | Parcial |
+| Endpoint POST /api/auth/login con emisión de JWT | TA-01.3 | Implementado; pendiente prueba funcional |
+| Pantalla de inicio de sesión conectada a la API | TA-01.4 | Implementada; pendiente prueba funcional |
+| Pruebas del inicio y cierre de sesión | TA-01.5 | No realizado |
 
 **Tecnologías utilizadas:**
 
@@ -1297,7 +1297,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | React.js | Pantalla de inicio de sesión | Componentes reutilizables para formularios. |
 | xUnit y Postman | Pruebas unitarias y de API | Verifican el login y el cierre de sesión de forma reproducible. |
 
-**Descripción de lo construido:** **[Completar]** Describir qué se implementó, cómo funciona y qué quedó pendiente o cambió respecto de lo planificado.
+**Descripción de lo construido:** La API implementa login con JWT y hash PBKDF2-SHA256; el administrador inicial se aprovisiona una sola vez mediante variables de entorno y las cuentas posteriores se crean desde un endpoint administrativo. React envía las credenciales a la API y conserva la sesión en `sessionStorage`. La persistencia se define en el esquema SQL, pero no se verificó la inicialización de la base ni se ejecutaron pruebas funcionales; el cierre de sesión elimina el token del navegador.
 
 ## 23.2 HU-02 – Restringir el acceso por rol y por curso
 
@@ -1307,9 +1307,9 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 
 | Funcionalidad | Tarea | Estado |
 |---|---|---|
-| Políticas de autorización por rol y por curso | TA-02.1 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Menú y rutas protegidas según el rol (M-02) | TA-02.2 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Pruebas de permisos | TA-02.3 | ☐ Completado ☐ Parcial ☐ No realizado |
+| Políticas de autorización por rol y por curso | TA-02.1 | Implementadas; pendientes pruebas funcionales |
+| Menú y rutas protegidas según el rol (M-02) | TA-02.2 | Parcial |
+| Pruebas de permisos | TA-02.3 | No realizado |
 
 **Tecnologías utilizadas:**
 
@@ -1320,7 +1320,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | React.js | Menú y rutas protegidas | Muestra solo las opciones del rol autenticado. |
 | xUnit y Postman | Pruebas de permisos | Verifican respuestas 401 y 403. |
 
-**Descripción de lo construido:** **[Completar]** Describir qué se implementó, cómo funciona y qué quedó pendiente o cambió respecto de lo planificado.
+**Descripción de lo construido:** La API requiere JWT por defecto; la sincronización técnica está limitada al rol administrador y los docentes solo reciben cursos y datos de cursos asignados. Las rutas de React requieren una sesión, aunque no hay una administración visual de cuentas/asignaciones. Deben probarse respuestas 401/403 y aislamiento entre cursos antes de considerar aceptada la historia.
 
 ## 23.3 HU-03 – Configurar y verificar la conexión con Moodle
 
@@ -1330,11 +1330,11 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 
 | Funcionalidad | Tarea | Estado |
 |---|---|---|
-| Servicio de Integración con Moodle y cliente REST | TA-03.1 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Configuración de Moodle (URL y secretos) | TA-03.2 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Verificación de la conexión | TA-03.3 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Pantalla de configuración de Moodle (M-03) | TA-03.4 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Pruebas de la conexión | TA-03.5 | ☐ Completado ☐ Parcial ☐ No realizado |
+| Servicio de Integración con Moodle y cliente REST | TA-03.1 | Parcial |
+| Configuración de Moodle (URL y secretos) | TA-03.2 | Parcial |
+| Verificación de la conexión | TA-03.3 | Parcial |
+| Pantalla de configuración de Moodle (M-03) | TA-03.4 | No realizado |
+| Pruebas de la conexión | TA-03.5 | No realizado |
 
 **Tecnologías utilizadas:**
 
@@ -1346,7 +1346,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | React.js | Pantalla de configuración | Permite al Administrador técnico verificar la conexión. |
 | xUnit y Postman | Pruebas de conexión | Cubren conexión válida, URL inválida y credencial inválida. |
 
-**Descripción de lo construido:** **[Completar]** Describir qué se implementó, cómo funciona y qué quedó pendiente o cambió respecto de lo planificado.
+**Descripción de lo construido:** El cliente REST lee URL y token desde configuración/variables de entorno, y las operaciones de sincronización consultan Moodle. No se implementó una pantalla administrativa para editar o verificar la conexión ni una respuesta específica con nombre del sitio y tiempo de respuesta. No se verificaron una instancia y credenciales reales; esta historia sigue parcial.
 
 ## 23.4 HU-04 – Sincronizar cursos y matriculados
 
@@ -1356,11 +1356,11 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 
 | Funcionalidad | Tarea | Estado |
 |---|---|---|
-| Servicio Académico y modelo de datos de cursos | TA-04.1 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Consumo de cursos y matriculados de Moodle | TA-04.2 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Caso de uso de sincronización idempotente | TA-04.3 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Bitácora de sincronización | TA-04.4 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Pruebas de la sincronización de cursos | TA-04.5 | ☐ Completado ☐ Parcial ☐ No realizado |
+| Servicio Académico y modelo de datos de cursos | TA-04.1 | Parcial |
+| Consumo de cursos y matriculados de Moodle | TA-04.2 | Parcial |
+| Caso de uso de sincronización idempotente | TA-04.3 | Parcial |
+| Bitácora de sincronización | TA-04.4 | Parcial |
+| Pruebas de la sincronización de cursos | TA-04.5 | No realizado |
 
 **Tecnologías utilizadas:**
 
@@ -1371,7 +1371,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | Entity Framework Core + SQL Server | Persistencia y bitácora | Transacciones confiables y migraciones. |
 | xUnit | Pruebas de mapeo e idempotencia | Evitan duplicados al repetir la sincronización. |
 
-**Descripción de lo construido:** **[Completar]** Describir qué se implementó, cómo funciona y qué quedó pendiente o cambió respecto de lo planificado.
+**Descripción de lo construido:** El flujo de calificaciones consulta usuarios matriculados, guarda matrículas de quienes Moodle identifica como estudiantes y persiste cursos, actividades y calificaciones. El repositorio registra sincronizaciones completas/incompletas y las claves de Moodle ayudan a evitar duplicados. No se ha comprobado la idempotencia con ejecuciones reales contra SQL Server y Moodle; la bitácora cubre el flujo de calificaciones, no una sincronización completa de todos los cursos.
 
 ## 23.5 HU-05 – Sincronizar calificaciones y estados de actividad
 
@@ -1381,12 +1381,12 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 
 | Funcionalidad | Tarea | Estado |
 |---|---|---|
-| Modelo de calificaciones y estados de actividad | TA-05.1 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Consumo de notas y estados desde Moodle | TA-05.2 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Sincronización de calificaciones y estados | TA-05.3 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Endpoints de sincronización y estado | TA-05.4 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Pantalla de sincronización (M-04) | TA-05.5 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Pruebas de errores y datos ausentes | TA-05.6 | ☐ Completado ☐ Parcial ☐ No realizado |
+| Modelo de calificaciones y estados de actividad | TA-05.1 | Parcial |
+| Consumo de notas y estados desde Moodle | TA-05.2 | Parcial |
+| Sincronización de calificaciones y estados | TA-05.3 | Parcial |
+| Endpoints de sincronización y estado | TA-05.4 | Parcial |
+| Pantalla de sincronización (M-04) | TA-05.5 | No realizado |
+| Pruebas de errores y datos ausentes | TA-05.6 | No realizado |
 
 **Tecnologías utilizadas:**
 
@@ -1398,7 +1398,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | React.js | Pantalla de sincronización | Muestra estado, fecha y errores. |
 | xUnit y Postman | Pruebas de errores | Verifican el manejo de datos ausentes (RNF-03). |
 
-**Descripción de lo construido:** **[Completar]** Describir qué se implementó, cómo funciona y qué quedó pendiente o cambió respecto de lo planificado.
+**Descripción de lo construido:** El endpoint de calificaciones obtiene datos de Moodle, persiste escala máxima, notas y estado de sincronización. Los indicadores exponen la fecha y estado de la última sincronización; la interfaz de curso muestra una advertencia si quedó incompleta. No existe una pantalla dedicada para administrar sincronizaciones y faltan pruebas con Moodle para verificar todos los escenarios de error y estados ausentes.
 
 ## 23.6 HU-06 – Seleccionar curso y listar estudiantes
 
@@ -1408,10 +1408,10 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 
 | Funcionalidad | Tarea | Estado |
 |---|---|---|
-| Endpoints de cursos y estudiantes | TA-06.1 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Pantalla de selección de curso y período (M-05) | TA-06.2 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Tabla de estudiantes con búsqueda y filtros (M-05) | TA-06.3 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Pruebas de autorización, paginación y filtros | TA-06.4 | ☐ Completado ☐ Parcial ☐ No realizado |
+| Endpoints de cursos y estudiantes | TA-06.1 | Parcial |
+| Pantalla de selección de curso y período (M-05) | TA-06.2 | Parcial |
+| Tabla de estudiantes con búsqueda, filtros y paginación (M-05) | TA-06.3 | Implementada; pendiente prueba funcional |
+| Pruebas de autorización, paginación y filtros | TA-06.4 | No realizado |
 
 **Tecnologías utilizadas:**
 
@@ -1422,7 +1422,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | React.js | Selección de curso y tabla de estudiantes | Interfaz con búsqueda, filtros y paginación. |
 | xUnit y Postman | Pruebas de autorización y filtros | Verifican accesos 403 y resultados filtrados. |
 
-**Descripción de lo construido:** **[Completar]** Describir qué se implementó, cómo funciona y qué quedó pendiente o cambió respecto de lo planificado.
+**Descripción de lo construido:** La pantalla lista cursos obtenidos de la API. El detalle consulta estudiantes matriculados con búsqueda, filtro de estado y paginación; la API verifica la asignación del docente antes de entregar información académica. La selección de período no está implementada y los controles de acceso, filtros y resultados requieren pruebas funcionales.
 
 ## 23.7 HU-07 – Consultar el panel básico de indicadores
 
@@ -1432,10 +1432,10 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 
 | Funcionalidad | Tarea | Estado |
 |---|---|---|
-| Cálculo de indicadores | TA-07.1 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Endpoint de indicadores | TA-07.2 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Panel de indicadores (M-06) | TA-07.3 | ☐ Completado ☐ Parcial ☐ No realizado |
-| Pruebas del panel de indicadores | TA-07.4 | ☐ Completado ☐ Parcial ☐ No realizado |
+| Cálculo de indicadores desde calificaciones persistidas | TA-07.1 | Implementado; pendiente prueba funcional |
+| Endpoint de indicadores | TA-07.2 | Implementado; pendiente prueba funcional |
+| Panel de indicadores conectado a la API (M-06) | TA-07.3 | Implementado; pendiente prueba funcional |
+| Pruebas del panel de indicadores | TA-07.4 | No realizado |
 
 **Tecnologías utilizadas:**
 
@@ -1445,62 +1445,76 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | React.js | Panel de indicadores | Tarjetas, gráfico y advertencias. |
 | xUnit | Pruebas unitarias de indicadores | Comprueban los cálculos con un conjunto de datos conocido (RNF-06). |
 
-**Descripción de lo construido:** **[Completar]** Describir qué se implementó, cómo funciona y qué quedó pendiente o cambió respecto de lo planificado.
+**Descripción de lo construido:** El panel obtiene del API el promedio normalizado a 100, distribución, actividades evaluadas, matrículas, progreso y datos paginados de estudiantes. Las notas sin escala no se convierten en cero; se informa la fuente Moodle, última sincronización y advertencia de sincronización incompleta. La validación con datos reales de SQL Server y Moodle está pendiente, por lo que la historia aún no se declara aceptada.
+
+## 23.8 Validación técnica del repositorio
+
+Esta validación se realizó durante la revisión posterior del código y no representa horas, pruebas ni resultados históricos del Sprint 1.
+
+| Comprobación | Resultado | Evidencia |
+|---|---|---|
+| Compilación backend | Aprobada, 0 errores y 0 advertencias | `dotnet build backend\Uta.AcademicPerformance.Middleware.slnx` |
+| Compilación frontend | Aprobada | `npm run build` desde `frontend` |
+| Análisis estático frontend | Aprobado, sin advertencias | `npm run lint` desde `frontend` |
+| Smoke test HTTP | `/health`, `/health/database` y OpenAPI de desarrollo respondieron 200; `GET /api/cursos` sin JWT respondió 401 | API local con claves temporales; no se mutó la base |
+| Pruebas automatizadas | No ejecutadas; no se encontró proyecto de pruebas .NET ni script `test` en `frontend/package.json` | Revisión de la solución y manifiesto |
+| Esquema y flujo académico SQL/Moodle | Pendiente; la base local está accesible, pero conserva el esquema anterior y no se ejecutaron scripts ni sincronización para no modificar datos locales | Requiere aprobación para actualizar la base y credenciales/servicios Moodle |
+| Dependencias NuGet | Corregido: `System.Security.Cryptography.Pkcs` transitivo 9.0.11 tenía un hallazgo alto y uno medio; se fijó 9.0.21. `dotnet list package --vulnerable --include-transitive` y la evaluación CVE de dependencias directas no reportaron vulnerabilidades conocidas | Auditoría NuGet y evaluación CVE |
 
 ---
 
 # 24. TESTING DE LAS HISTORIAS DE USUARIO
 
-Para cada Historia de Usuario se definen dos casos de prueba (14 en total), tomados de sus criterios de aceptación (sección 14). La columna «Resultado obtenido» se completa al ejecutar las pruebas en la interfaz y con Postman; no se registran resultados hasta que se ejecuten.
+Para cada Historia de Usuario se definen dos casos de prueba (14 en total), tomados de sus criterios de aceptación (sección 14). En esta revisión no se ejecutaron esos 14 casos y no se encontró evidencia previa de su ejecución; por ello se marcan como pendientes de evidencia del equipo, no como fallidos. La compilación y el lint de la sección 23.8 no sustituyen estos casos de aceptación.
 
 ## 24.1 HU-01 – Iniciar sesión en el sistema
 
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
-| Inicio de sesión válido | Usuario y contraseña válidos y botón Ingresar | Recibe un JWT con su rol y es redirigido a la pantalla inicial | ☐ Exitoso ☐ Fallido |
-| Credenciales incorrectas | Contraseña errónea y botón Ingresar | Mensaje «Credenciales incorrectas», sin token (401) | ☐ Exitoso ☐ Fallido |
+| Inicio de sesión válido | Usuario y contraseña válidos y botón Ingresar | Recibe un JWT con su rol y es redirigido a la pantalla inicial | Pendiente de evidencia del equipo |
+| Credenciales incorrectas | Contraseña errónea y botón Ingresar | Mensaje «Credenciales incorrectas», sin token (401) | Pendiente de evidencia del equipo |
 
 ## 24.2 HU-02 – Restringir el acceso por rol y por curso
 
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
-| Rol sin permiso | Token de Docente que intenta abrir la configuración de Moodle | El servicio responde 403 | ☐ Exitoso ☐ Fallido |
-| Curso no asignado | Docente que consulta un curso que no tiene asignado | Solo recibe sus cursos; el acceso directo al otro curso responde 403 | ☐ Exitoso ☐ Fallido |
+| Rol sin permiso | Token de Docente que intenta abrir la configuración de Moodle | El servicio responde 403 | Pendiente de evidencia del equipo |
+| Curso no asignado | Docente que consulta un curso que no tiene asignado | Solo recibe sus cursos; el acceso directo al otro curso responde 403 | Pendiente de evidencia del equipo |
 
 ## 24.3 HU-03 – Configurar y verificar la conexión con Moodle
 
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
-| Conexión válida | Verificar conexión con URL y credencial correctas | «Conexión exitosa» con nombre del sitio y tiempo de respuesta | ☐ Exitoso ☐ Fallido |
-| Credencial rechazada | Verificar conexión con una credencial inválida | Mensaje diferenciado y útil, sin datos sensibles | ☐ Exitoso ☐ Fallido |
+| Conexión válida | Verificar conexión con URL y credencial correctas | «Conexión exitosa» con nombre del sitio y tiempo de respuesta | Pendiente de evidencia del equipo |
+| Credencial rechazada | Verificar conexión con una credencial inválida | Mensaje diferenciado y útil, sin datos sensibles | Pendiente de evidencia del equipo |
 
 ## 24.4 HU-04 – Sincronizar cursos y matriculados
 
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
-| Sincronización de cursos | Ejecutar la sincronización con la conexión verificada | Cursos y matriculados almacenados en SQL Server | ☐ Exitoso ☐ Fallido |
-| Idempotencia | Ejecutar la sincronización dos veces seguidas | Sin duplicados y con registro en la bitácora (fecha, resultado y errores) | ☐ Exitoso ☐ Fallido |
+| Sincronización de cursos | Ejecutar la sincronización con la conexión verificada | Cursos y matriculados almacenados en SQL Server | Pendiente de evidencia del equipo |
+| Idempotencia | Ejecutar la sincronización dos veces seguidas | Sin duplicados y con registro en la bitácora (fecha, resultado y errores) | Pendiente de evidencia del equipo |
 
 ## 24.5 HU-05 – Sincronizar calificaciones y estados de actividad
 
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
-| Sincronización de calificaciones | Sincronizar calificaciones de cursos ya importados | Ítems, notas, estados y escala almacenados | ☐ Exitoso ☐ Fallido |
-| Datos no disponibles | Moodle sin permiso en una de las funciones consultadas | Error registrado, estado «Incompleta» y notas ausentes como «sin dato» | ☐ Exitoso ☐ Fallido |
+| Sincronización de calificaciones | Sincronizar calificaciones de cursos ya importados | Ítems, notas, estados y escala almacenados | Pendiente de evidencia del equipo |
+| Datos no disponibles | Moodle sin permiso en una de las funciones consultadas | Error registrado, estado «Incompleta» y notas ausentes como «sin dato» | Pendiente de evidencia del equipo |
 
 ## 24.6 HU-06 – Seleccionar curso y listar estudiantes
 
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
-| Listado, búsqueda y filtro | Seleccionar un curso, buscar por nombre y aplicar el filtro | Resultados paginados que coinciden con la búsqueda y el filtro | ☐ Exitoso ☐ Fallido |
-| Curso no autorizado | Consultar un curso ajeno por identificador directo | El sistema responde 403 | ☐ Exitoso ☐ Fallido |
+| Listado, búsqueda y filtro | Seleccionar un curso, buscar por nombre y aplicar el filtro | Resultados paginados que coinciden con la búsqueda y el filtro | Pendiente de evidencia del equipo |
+| Curso no autorizado | Consultar un curso ajeno por identificador directo | El sistema responde 403 | Pendiente de evidencia del equipo |
 
 ## 24.7 HU-07 – Consultar el panel básico de indicadores
 
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
-| Panel con datos completos | Abrir el panel de un curso sincronizado | Promedio con escala, distribución, actividades evaluadas, progreso, fuente y fecha | ☐ Exitoso ☐ Fallido |
-| Datos incompletos | Abrir el panel de un curso con sincronización incompleta | Advertencia visible e indicadores no disponibles como «sin datos» | ☐ Exitoso ☐ Fallido |
+| Panel con datos completos | Abrir el panel de un curso sincronizado | Promedio con escala, distribución, actividades evaluadas, progreso, fuente y fecha | Pendiente de evidencia del equipo |
+| Datos incompletos | Abrir el panel de un curso con sincronización incompleta | Advertencia visible e indicadores no disponibles como «sin datos» | Pendiente de evidencia del equipo |
 
 ---
 
@@ -1669,6 +1683,8 @@ La retrospectiva recoge los riesgos considerados en la planificación, los aspec
 
 ## 26.1 Problemas encontrados
 
+La existencia de los riesgos y la forma en que el equipo los gestionó no se pueden reconstruir desde el código. Completar esta tabla con la retrospectiva real del equipo; no inferir respuestas de esta revisión técnica.
+
 Riesgos considerados en la planificación (sección 19.3) y su gestión real:
 
 | N.º | Riesgo considerado | ¿Se presentó? | Cómo se gestionó |
@@ -1708,7 +1724,7 @@ Otros problemas no previstos: **[Completar]**
 
 ## 27.1 Métricas del Sprint 1
 
-Se comparan los valores planificados con los resultados reales. Solo la columna «Planificado» está definida; las demás se completan al cierre.
+Se comparan los valores planificados con los resultados reales. Solo la columna «Planificado» está definida. Las métricas reales y porcentajes no se pueden deducir del repositorio ni de las validaciones técnicas hechas después del Sprint; completarlos con el tablero y los registros de trabajo de las fechas del Sprint.
 
 | Métrica | Planificado | Resultado real | % Cumplimiento |
 |---|---|---|---|

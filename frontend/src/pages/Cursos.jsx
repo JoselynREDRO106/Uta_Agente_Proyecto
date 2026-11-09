@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getCourses, getHealth, syncMoodleCourse } from '../services/api.js'
+import { getCourses, getCurrentUser, getHealth, syncMoodleCourse } from '../services/api.js'
+import { Link } from 'react-router-dom'
 
 function Cursos() {
+  const isAdministrator = getCurrentUser()?.rol === 'Administrador técnico'
   const [health, setHealth] = useState({ status: 'loading', message: 'Comprobando conexión…' })
   const [courses, setCourses] = useState([])
   const [coursesLoading, setCoursesLoading] = useState(true)
@@ -86,7 +88,7 @@ function Cursos() {
           <h1>Mis cursos</h1>
           <p className="muted">Cursos sincronizados desde Moodle y guardados en EduMonitor.</p>
         </div>
-        <form className="course-sync-form" onSubmit={handleSync}>
+        {isAdministrator && <form className="course-sync-form" onSubmit={handleSync}>
           <label htmlFor="moodle-course-id">ID del curso en Moodle</label>
           <input
             id="moodle-course-id"
@@ -99,7 +101,7 @@ function Cursos() {
           <button className="button button--primary" disabled={syncing} type="submit">
             {syncing ? 'Sincronizando…' : 'Sincronizar curso'}
           </button>
-        </form>
+        </form>}
       </div>
 
       <div className={`connection-banner connection-banner--${health.status}`} role="status">
@@ -121,32 +123,33 @@ function Cursos() {
         <div className="table-scroll">
           <table>
             <thead>
-              <tr><th>Asignatura</th><th>ID en Moodle</th></tr>
+              <tr><th>Asignatura</th><th>ID en Moodle</th><th /></tr>
             </thead>
             <tbody>
               {coursesLoading && (
-                <tr><td colSpan="2">Cargando cursos…</td></tr>
+                <tr><td colSpan="3">Cargando cursos…</td></tr>
               )}
               {!coursesLoading && courses.map((course) => (
                 <tr key={course.id}>
                   <td>
-                    <span className="course-cell">
+                    <Link className="course-cell" to={`/cursos/${course.id}`}>
                       <span className="course-icon course-icon--blue" aria-hidden="true">▦</span>
                       <span><strong>{course.name}</strong></span>
-                    </span>
+                    </Link>
                   </td>
                   <td>{course.id}</td>
+                  <td><Link aria-label={`Consultar ${course.name}`} className="icon-link" to={`/cursos/${course.id}`}>↗</Link></td>
                 </tr>
               ))}
               {!coursesLoading && !coursesError && courses.length === 0 && (
-                <tr><td colSpan="2">No hay cursos sincronizados. Ingresa arriba el ID de un curso de Moodle.</td></tr>
+                <tr><td colSpan="3">{isAdministrator ? 'No hay cursos sincronizados. Ingresa arriba el ID de un curso de Moodle.' : 'No tienes cursos asignados. Solicita acceso al administrador técnico.'}</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </section>
 
-      <p className="page-footnote">La sincronización requiere que el backend tenga configurados el acceso a Moodle y SQL Server.</p>
+      <p className="page-footnote">Los cursos disponibles provienen de Moodle y están limitados a los permisos de tu cuenta.</p>
     </>
   )
 }

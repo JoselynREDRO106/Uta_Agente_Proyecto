@@ -25,6 +25,7 @@ public static class InfrastructureServiceExtensions
         services.AddDbContext<EduMonitorDbContext>(options =>
             options.UseSqlServer(connectionString));
         services.AddScoped<IEduMonitorRepository, EduMonitorRepository>();
+        services.AddScoped<IAuthenticationRepository, AuthenticationRepository>();
 
         // Enlazar configuración de Moodle usando la sección del appsettings.json
         var moodleSection = configuration.GetSection(MoodleSettings.SectionName);

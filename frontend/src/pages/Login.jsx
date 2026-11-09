@@ -1,13 +1,26 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { login } from '../services/api.js'
 
 function Login() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
-    navigate('/cursos')
+    setError('')
+    setLoading(true)
+    try {
+      await login(email, password)
+      navigate('/cursos', { replace: true })
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -53,10 +66,15 @@ function Login() {
             placeholder="Ingresa tu contraseña"
             required
             type="password"
+            onChange={(event) => setPassword(event.target.value)}
+            value={password}
           />
 
-          <button className="button button--primary button--wide" type="submit">Ingresar <span aria-hidden="true">→</span></button>
-          <p className="login-note">Prototipo Sprint 1 · El acceso real se integrará en una siguiente iteración.</p>
+          {error && <p className="course-message course-message--error" role="alert">{error}</p>}
+          <button className="button button--primary button--wide" disabled={loading} type="submit">
+            {loading ? 'Validando…' : 'Ingresar'} <span aria-hidden="true">→</span>
+          </button>
+          <p className="login-note">Acceso para cuentas habilitadas por el administrador técnico.</p>
         </form>
       </section>
     </main>
