@@ -41,7 +41,9 @@ Para usar SQL Server sin Docker, no ejecutes `docker compose` para SQL Server. L
 
 ## Conexión con Moodle
 
-El backend consume Moodle mediante Web Services REST y un token; no se conecta a la base de datos de Moodle. Si ya tienes Moodle instalado localmente, inicia Apache/MariaDB con tu instalación habitual y configura `MoodleSettings__BaseUrl` con la URL que abre en tu navegador. No necesitas usar Docker para ello.
+Moodle se consume mediante Web Services REST; el proyecto no se conecta directamente a la base de datos de Moodle. En el primer paso de la migración gradual, `Uta.MoodleIntegration.WebApi` es un proceso independiente que guarda la URL y el token cifrado en la base lógica `MoodleIntegration`, permite verificar la conexión y ofrece un puente interno para las operaciones Moodle del middleware. El token nunca se devuelve a la interfaz. La persistencia académica de cursos, matrículas, actividades y calificaciones continúa temporalmente en `EduMonitor`; su traslado al servicio dueño de Integración es una etapa posterior.
+
+Si ya tienes Moodle instalado localmente, inicia Apache/MariaDB con tu instalación habitual. No necesitas Docker para Moodle.
 
 El repositorio también incluye un entorno opcional de Moodle 4.5.15 en Docker, descrito en [docs/moodle_setup.md](docs/moodle_setup.md). Úsalo solo si quieres crear un Moodle de laboratorio desde cero.
 
@@ -111,15 +113,44 @@ Inicia sesión desde `/login`. El administrador puede crear docentes y asignarle
 
 El bootstrap devuelve conflicto una vez que ya existe un administrador. La API exige un JWT en todos los endpoints salvo login, bootstrap inicial, salud y OpenAPI de desarrollo. El endpoint de sincronización Moodle requiere el rol `Administrador técnico`; un docente solo puede consultar cursos asignados. El cierre de sesión elimina el token del almacenamiento de sesión del navegador.
 
-Para consultar los servicios Moodle desde el backend, asegúrate de que Moodle esté iniciado y define el token local para el proceso antes de ejecutar .NET:
+### Servicio independiente de Integración Moodle
+
+Ejecuta una vez el script de esquema de la base de configuración, además de los scripts de `EduMonitor`:
 
 ```powershell
-$env:MoodleSettings__BaseUrl = 'http://localhost:8080'
-$env:MoodleSettings__Token = 'PEGA_AQUI_EL_TOKEN_LOCAL'
-dotnet run --project backend/Uta.Middleware.WebApi/Uta.Middleware.WebApi.csproj --launch-profile http
+sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\003_moodle_integration.sql
 ```
 
-Las rutas de sincronización consultan Moodle y guardan cursos, matrículas, usuarios, actividades, calificaciones, escalas y mapeos temáticos en SQL Server. El token debe tener acceso a `core_course_get_courses`, `core_enrol_get_enrolled_users`, `core_course_get_contents` y `gradereport_user_get_grade_items`. Las calificaciones se consultan por usuario matriculado; esta instancia no ofrece `core_grades_get_grades`.
+La API de Integración corre en `http://localhost:5010` y la API académica conserva `http://localhost:5000`. Para desarrollo, configura una clave JWT estable compartida por ambas APIs y una clave interna aleatoria de al menos 32 bytes. No publiques estos valores ni la carpeta local de claves Data Protection; conserva una copia protegida de esta última, necesaria para descifrar el token guardado.
+
+```powershell
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+$jwtBytes = New-Object byte[] 48
+$integrationBytes = New-Object byte[] 32
+$rng.GetBytes($jwtBytes)
+$rng.GetBytes($integrationBytes)
+$env:Authentication__Jwt__SigningKey = [Convert]::ToBase64String($jwtBytes)
+$env:MoodleIntegration__ApiKey = [Convert]::ToBase64String($integrationBytes)
+$env:MoodleIntegration__DataProtectionKeysPath = Join-Path $env:LOCALAPPDATA 'EduMonitor\MoodleIntegration\keys'
+$rng.Dispose()
+
+# Inicia Integración en un proceso hijo que hereda las claves del proceso actual.
+$integrationProcess = Start-Process dotnet -ArgumentList @(
+  'run', '--project', 'backend\Uta.MoodleIntegration.WebApi\Uta.MoodleIntegration.WebApi.csproj',
+  '--launch-profile', 'http'
+) -WorkingDirectory $PWD -PassThru
+```
+
+Apunta la API académica al servicio de Integración y reiníciala si ya estaba ejecutándose:
+
+```powershell
+$env:MoodleIntegration__BaseUrl = 'http://localhost:5010'
+dotnet run --project backend\Uta.Middleware.WebApi\Uta.Middleware.WebApi.csproj --launch-profile http
+```
+
+Abre `/admin/moodle` con una cuenta `Administrador técnico`, guarda la URL y el token y usa **Verificar conexión**. El campo del token es write-only: vacío conserva el valor previamente guardado. Para Moodle remoto se exige HTTPS; HTTP solo se permite para una instancia local. El token debe habilitar `core_webservice_get_site_info`, `core_course_get_courses`, `core_enrol_get_enrolled_users`, `core_course_get_contents` y `gradereport_user_get_grade_items`.
+
+El middleware delega las nuevas sincronizaciones al proceso de Integración cuando `MoodleIntegration__BaseUrl` está configurado. Si se omite, conserva temporalmente el cliente Moodle legado para no romper instalaciones existentes. El puente usa `MoodleIntegration__ApiKey`; los endpoints internos no aceptan llamadas anónimas. La instancia SQL Server local aloja dos bases lógicas y sigue siendo un punto único de falla.
 
 ## Frontend React
 

@@ -27,6 +27,18 @@ function AppLayout() {
             <span className="nav-link__icon" aria-hidden="true">▦</span>
             Cursos
           </NavLink>
+          {user?.rol === 'Administrador técnico' && (
+            <NavLink to="/admin/moodle" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
+              <span className="nav-link__icon" aria-hidden="true">⚙</span>
+              Moodle
+            </NavLink>
+          )}
+          {user?.rol === 'Administrador técnico' && (
+            <NavLink to="/admin/sincronizaciones" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
+              <span className="nav-link__icon" aria-hidden="true">↻</span>
+              Sincronizaciones
+            </NavLink>
+          )}
         </nav>
 
         <div className="sidebar__footer">

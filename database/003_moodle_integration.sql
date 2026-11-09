@@ -1,0 +1,25 @@
+IF DB_ID(N'MoodleIntegration') IS NULL
+BEGIN
+    CREATE DATABASE MoodleIntegration;
+END;
+GO
+
+USE MoodleIntegration;
+GO
+
+IF OBJECT_ID(N'dbo.MOODLE_CONFIGURATION', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.MOODLE_CONFIGURATION
+    (
+        id INT NOT NULL
+            CONSTRAINT PK_MOODLE_CONFIGURATION PRIMARY KEY
+            CONSTRAINT CK_MOODLE_CONFIGURATION_singleton CHECK (id = 1),
+        base_url NVARCHAR(500) NOT NULL,
+        protected_token NVARCHAR(MAX) NOT NULL,
+        timeout_seconds INT NOT NULL
+            CONSTRAINT DF_MOODLE_CONFIGURATION_timeout DEFAULT (30)
+            CONSTRAINT CK_MOODLE_CONFIGURATION_timeout CHECK (timeout_seconds BETWEEN 5 AND 120),
+        updated_at_utc DATETIMEOFFSET NOT NULL
+    );
+END;
+GO

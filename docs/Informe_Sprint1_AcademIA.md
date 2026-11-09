@@ -1285,7 +1285,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | Persistencia de usuarios, roles y asignaciones | TA-01.2 | Parcial |
 | Endpoint POST /api/auth/login con emisión de JWT | TA-01.3 | Implementado; pendiente prueba funcional |
 | Pantalla de inicio de sesión conectada a la API | TA-01.4 | Implementada; pendiente prueba funcional |
-| Pruebas del inicio y cierre de sesión | TA-01.5 | No realizado |
+| Pruebas del inicio y cierre de sesión | TA-01.5 | Parcial; login válido comprobado manualmente después del Sprint; cierre de sesión y credenciales inválidas pendientes |
 
 **Tecnologías utilizadas:**
 
@@ -1309,7 +1309,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 |---|---|---|
 | Políticas de autorización por rol y por curso | TA-02.1 | Implementadas; pendientes pruebas funcionales |
 | Menú y rutas protegidas según el rol (M-02) | TA-02.2 | Parcial |
-| Pruebas de permisos | TA-02.3 | No realizado |
+| Pruebas de permisos | TA-02.3 | Parcial; respuestas 401/403 y rechazo de curso no asignado comprobados manualmente después del Sprint; matriz de roles pendiente |
 
 **Tecnologías utilizadas:**
 
@@ -1330,11 +1330,11 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 
 | Funcionalidad | Tarea | Estado |
 |---|---|---|
-| Servicio de Integración con Moodle y cliente REST | TA-03.1 | Parcial |
-| Configuración de Moodle (URL y secretos) | TA-03.2 | Parcial |
-| Verificación de la conexión | TA-03.3 | Parcial |
-| Pantalla de configuración de Moodle (M-03) | TA-03.4 | No realizado |
-| Pruebas de la conexión | TA-03.5 | No realizado |
+| Servicio de Integración con Moodle y cliente REST | TA-03.1 | Primer proceso independiente implementado; datos académicos aún persisten temporalmente en EduMonitor |
+| Configuración de Moodle (URL y secretos) | TA-03.2 | Configuración administrativa implementada; token cifrado, write-only |
+| Verificación de la conexión | TA-03.3 | Implementada y comprobada contra Moodle real después del Sprint |
+| Pantalla de configuración de Moodle (M-03) | TA-03.4 | Implementada; build/lint aprobados, falta recorrido manual de navegador |
+| Pruebas de la conexión | TA-03.5 | Pruebas manuales de credencial válida, inválida y URL remota HTTP ejecutadas después del Sprint |
 
 **Tecnologías utilizadas:**
 
@@ -1346,7 +1346,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | React.js | Pantalla de configuración | Permite al Administrador técnico verificar la conexión. |
 | xUnit y Postman | Pruebas de conexión | Cubren conexión válida, URL inválida y credencial inválida. |
 
-**Descripción de lo construido:** El cliente REST lee URL y token desde configuración/variables de entorno, y las operaciones de sincronización consultan Moodle. No se implementó una pantalla administrativa para editar o verificar la conexión ni una respuesta específica con nombre del sitio y tiempo de respuesta. No se verificaron una instancia y credenciales reales; esta historia sigue parcial.
+**Descripción de lo construido:** En el primer incremento posterior al Sprint, Integración Moodle se separó en un proceso ASP.NET Core con base lógica propia para la configuración. La pantalla permite guardar URL y token (cifrado en reposo y nunca devuelto), y verificar el sitio y tiempo de respuesta. Las operaciones REST se delegan por un puente autenticado cuando la API académica tiene configurada la URL del nuevo servicio. La separación de la persistencia académica y del proceso de Análisis sigue pendiente; esta etapa no equivale a completar la arquitectura de microservicios.
 
 ## 23.4 HU-04 – Sincronizar cursos y matriculados
 
@@ -1360,7 +1360,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | Consumo de cursos y matriculados de Moodle | TA-04.2 | Parcial |
 | Caso de uso de sincronización idempotente | TA-04.3 | Parcial |
 | Bitácora de sincronización | TA-04.4 | Parcial |
-| Pruebas de la sincronización de cursos | TA-04.5 | No realizado |
+| Pruebas de la sincronización de cursos | TA-04.5 | Aprobadas manualmente después del Sprint para sincronización e idempotencia; automatización pendiente |
 
 **Tecnologías utilizadas:**
 
@@ -1371,7 +1371,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | Entity Framework Core + SQL Server | Persistencia y bitácora | Transacciones confiables y migraciones. |
 | xUnit | Pruebas de mapeo e idempotencia | Evitan duplicados al repetir la sincronización. |
 
-**Descripción de lo construido:** El flujo de calificaciones consulta usuarios matriculados, guarda matrículas de quienes Moodle identifica como estudiantes y persiste cursos, actividades y calificaciones. El repositorio registra sincronizaciones completas/incompletas y las claves de Moodle ayudan a evitar duplicados. La sincronización real e idempotencia se comprobaron posteriormente contra SQL Server y Moodle; la evidencia y el alcance de esa prueba se detallan en la sección 23.9.
+**Descripción de lo construido:** El flujo de calificaciones consulta usuarios matriculados, guarda matrículas de quienes Moodle identifica como estudiantes y persiste cursos, actividades y calificaciones. El repositorio registra sincronizaciones completas/incompletas y las claves de Moodle ayudan a evitar duplicados. La sincronización e idempotencia se comprobaron posteriormente contra SQL Server y Moodle (secciones 23.9 y 23.10). Los datos académicos todavía se escriben en la base EduMonitor existente; mover su propiedad a una base exclusiva de Integración queda pendiente.
 
 ## 23.5 HU-05 – Sincronizar calificaciones y estados de actividad
 
@@ -1385,8 +1385,8 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | Consumo de notas y estados desde Moodle | TA-05.2 | Parcial |
 | Sincronización de calificaciones y estados | TA-05.3 | Parcial |
 | Endpoints de sincronización y estado | TA-05.4 | Parcial |
-| Pantalla de sincronización (M-04) | TA-05.5 | No realizado |
-| Pruebas de errores y datos ausentes | TA-05.6 | No realizado |
+| Pantalla de sincronización e historial (M-04) | TA-05.5 | Implementada; build/lint aprobados; recorrido manual de navegador pendiente |
+| Pruebas de errores y datos ausentes | TA-05.6 | Parcial; token inválido, caída de Integración y reintento comprobados manualmente después del Sprint; otros datos ausentes pendientes |
 
 **Tecnologías utilizadas:**
 
@@ -1411,7 +1411,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | Endpoints de cursos y estudiantes | TA-06.1 | Parcial |
 | Pantalla de selección de curso y período (M-05) | TA-06.2 | Parcial |
 | Tabla de estudiantes con búsqueda, filtros y paginación (M-05) | TA-06.3 | Implementada; pendiente prueba funcional |
-| Pruebas de autorización, paginación y filtros | TA-06.4 | No realizado |
+| Pruebas de autorización, paginación y filtros | TA-06.4 | Parcial; autorización, búsqueda y filtro de estado comprobados manualmente después del Sprint; paginación y automatización pendientes |
 
 **Tecnologías utilizadas:**
 
@@ -1435,7 +1435,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | Cálculo de indicadores desde calificaciones persistidas | TA-07.1 | Implementado; pendiente prueba funcional |
 | Endpoint de indicadores | TA-07.2 | Implementado; pendiente prueba funcional |
 | Panel de indicadores conectado a la API (M-06) | TA-07.3 | Implementado; pendiente prueba funcional |
-| Pruebas del panel de indicadores | TA-07.4 | No realizado |
+| Pruebas del panel de indicadores | TA-07.4 | Parcial; datos reales y disponibilidad durante caída de Integración comprobados manualmente después del Sprint; aceptación automatizada pendiente |
 
 **Tecnologías utilizadas:**
 
@@ -1473,8 +1473,30 @@ Estas pruebas manuales se realizaron después de autorizar la actualización de 
 | Autenticación y autorización | Aprobadas para los casos ejecutados | Inicio de sesión válido en API e interfaz; endpoint protegido sin token respondió 401 y acceso docente a un curso no asignado respondió 403 |
 | Listado, búsqueda y filtros | Aprobados manualmente | El curso mostró tres estudiantes; un término sin coincidencias mostró cero y al limpiar la búsqueda volvieron los tres resultados; también se comprobó el filtro de estado |
 | Panel de indicadores | Aprobado para datos disponibles | Promedio general 24,78/100, 3 de 3 actividades evaluadas, progreso 100 % y fecha/fuente Moodle visibles |
-| Casos de error y datos ausentes | Pendientes | No se deshabilitó deliberadamente un servicio Moodle ni se generó una sincronización incompleta |
+| Casos de error y datos ausentes | Parciales | La sección 23.10 documenta la caída de Integración, el registro incompleto y su recuperación; faltan otros escenarios de datos ausentes |
 | Automatización | No ejecutada | No se encontró un proyecto de pruebas .NET ni un script `test` en `frontend/package.json`; la evidencia anterior es manual |
+
+## 23.10 Primer incremento de la migración gradual: Integración Moodle
+
+Validación manual posterior al Sprint 1; no debe contabilizarse como evidencia histórica del Sprint. El proceso de Integración se ejecutó en `localhost:5010` contra una base `MoodleIntegration` separada. El middleware académico siguió en `localhost:5000`.
+
+| Comprobación | Resultado | Evidencia |
+|---|---|---|
+| Compilación de los proyectos .NET de la solución | Aprobada, 0 errores y 0 advertencias | `dotnet build backend\Uta.AcademicPerformance.Middleware.slnx` |
+| Build y lint de React | Aprobados | `npm run build` y `npm run lint` |
+| Salud de Integración y conexión a su base | Aprobadas | `/health` y `/health/database` respondieron correctamente |
+| Guardado administrativo del token | Aprobado | Se guardó la configuración en la base separada; la consulta de estado no incluye propiedad/token |
+| Verificación Moodle válida | Aprobada | `core_webservice_get_site_info` respondió con nombre del sitio y latencia |
+| Verificación con token inválido | Rechazo esperado | La API respondió 502 sin devolver el token |
+| URL remota HTTP | Rechazo esperado | La validación administrativa respondió 400; HTTP solo se permite para Moodle local |
+| Protección de operaciones internas | Aprobada | Sin `X-Integration-Key`, el endpoint interno respondió 401 |
+| Ruta de sincronización existente con puente | Aprobada | `POST /api/cursos/sincronizar/2` completó a través de Integración y devolvió el curso `Software 1` |
+| Historial de sincronizaciones | Aprobado | El endpoint administrativo devolvió los registros persistidos, incluidos los estados incompleto y completo |
+| Continuidad durante caída de Integración | Aprobada para datos persistidos | Con Integración detenida, la API académica siguió consultando cursos e indicadores previamente guardados; una nueva sincronización falló explícitamente con HTTP 502 y se registró como incompleta |
+| Recuperación y reintento | Aprobados | Tras reiniciar Integración, el reintento del curso terminó correctamente y el historial reflejó estado `Completa` |
+| UI por navegador y automatización permanente | Pendientes | Se validó build/lint y los endpoints por HTTP; no se añadió proyecto de pruebas ni se hizo recorrido visual automatizado |
+
+El corte es deliberadamente parcial: la configuración Moodle reside en su nueva base, pero cursos, matrículas, actividades y calificaciones siguen guardándose en `EduMonitor`. Identidad sigue en el middleware existente; Análisis aún no tiene proceso/base propia; RabbitMQ, outbox, consumidores idempotentes y selección de período siguen pendientes. El historial y el reintento de sincronizaciones ya están implementados; su interfaz tiene validación de build/lint, pero aún no recorrido visual. Cuando Integración Moodle no está disponible, los datos previamente persistidos siguen consultándose desde la API académica, pero la sincronización nueva falla explícitamente y queda registrada para seguimiento.
 
 ---
 

@@ -41,6 +41,29 @@ public static class InfrastructureServiceExtensions
                 ? settings.TimeoutSeconds : 30);
         });
 
+        var integrationSection = configuration.GetSection(MoodleIntegrationBridgeSettings.SectionName);
+        var integrationSettings = integrationSection.Get<MoodleIntegrationBridgeSettings>()
+            ?? new MoodleIntegrationBridgeSettings();
+        if (!string.IsNullOrWhiteSpace(integrationSettings.BaseUrl))
+        {
+            if (!Uri.TryCreate(integrationSettings.BaseUrl, UriKind.Absolute, out var integrationUri)
+                || (integrationUri.Scheme != Uri.UriSchemeHttp && integrationUri.Scheme != Uri.UriSchemeHttps)
+                || string.IsNullOrWhiteSpace(integrationSettings.ApiKey)
+                || System.Text.Encoding.UTF8.GetByteCount(integrationSettings.ApiKey) < 32)
+            {
+                throw new InvalidOperationException(
+                    "MoodleIntegration__BaseUrl must be an absolute HTTP(S) URL and MoodleIntegration__ApiKey must contain at least 32 bytes.");
+            }
+
+            services.Configure<MoodleIntegrationBridgeSettings>(integrationSection);
+            services.AddHttpClient<IMoodleHttpClient, MoodleIntegrationHttpClient>((sp, client) =>
+            {
+                var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MoodleIntegrationBridgeSettings>>().Value;
+                client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
+                client.Timeout = TimeSpan.FromSeconds(60);
+            });
+        }
+
         // Registrar casos de uso
         services.AddScoped<ISincronizarCalificacionesUseCase, SincronizarCalificacionesUseCase>();
         services.AddScoped<ISincronizarMapeoTematicoUseCase, SincronizarMapeoTematicoUseCase>();

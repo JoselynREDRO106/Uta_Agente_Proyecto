@@ -4,11 +4,19 @@ import Login from './pages/Login.jsx'
 import Cursos from './pages/Cursos.jsx'
 import DashboardCurso from './pages/DashboardCurso.jsx'
 import FichaEstudiante from './pages/FichaEstudiante.jsx'
-import { hasSession } from './services/api.js'
+import HistorialSincronizaciones from './pages/HistorialSincronizaciones.jsx'
+import { getCurrentUser, hasSession } from './services/api.js'
+import ConfiguracionMoodle from './pages/ConfiguracionMoodle.jsx'
 import './App.css'
 
 function RequireAuth() {
   return hasSession() ? <Outlet /> : <Navigate to="/login" replace />
+}
+
+function RequireAdministrator() {
+  return getCurrentUser()?.rol === 'Administrador técnico'
+    ? <Outlet />
+    : <Navigate to="/cursos" replace />
 }
 
 function App() {
@@ -22,6 +30,10 @@ function App() {
             <Route path="/cursos" element={<Cursos />} />
             <Route path="/cursos/:id" element={<DashboardCurso />} />
             <Route path="/estudiantes/:id" element={<FichaEstudiante />} />
+            <Route element={<RequireAdministrator />}>
+              <Route path="/admin/moodle" element={<ConfiguracionMoodle />} />
+              <Route path="/admin/sincronizaciones" element={<HistorialSincronizaciones />} />
+            </Route>
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />

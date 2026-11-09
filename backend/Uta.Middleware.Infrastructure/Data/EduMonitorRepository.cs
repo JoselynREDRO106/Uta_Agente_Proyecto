@@ -207,6 +207,23 @@ internal sealed class EduMonitorRepository(EduMonitorDbContext dbContext) : IEdu
             distribution);
     }
 
+    public async Task<IReadOnlyCollection<SincronizacionDto>> GetSyncHistoryAsync(
+        int limit,
+        CancellationToken cancellationToken = default) =>
+        await (
+            from sync in dbContext.Sincronizaciones.AsNoTracking()
+            join course in dbContext.Cursos.AsNoTracking()
+                on sync.CourseId equals course.Id
+            orderby sync.CompletedAtUtc descending, sync.Id descending
+            select new SincronizacionDto(
+                course.MoodleId,
+                course.Name,
+                sync.CompletedAtUtc,
+                sync.Status,
+                sync.ErrorSummary))
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
     public async Task RecordSyncAsync(
         int moodleCourseId,
         string status,
