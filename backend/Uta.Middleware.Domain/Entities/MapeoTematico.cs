@@ -13,8 +13,8 @@ public class MapeoTematico
     /// <summary>Nombre de la asignatura en Moodle.</summary>
     public string NombreAsignatura { get; set; } = string.Empty;
 
-    /// <summary>ID del ítem de calificación en Moodle.</summary>
-    public int MoodleGradeItemId { get; set; }
+    /// <summary>ID del módulo de curso en Moodle.</summary>
+    public int MoodleActivityId { get; set; }
 
     /// <summary>Nombre del ítem/actividad en Moodle.</summary>
     public string NombreActividad { get; set; } = string.Empty;

@@ -42,7 +42,7 @@ public class SincronizarMapeoTematicoUseCase : ISincronizarMapeoTematicoUseCase
                 {
                     MoodleCourseId    = courseId,
                     NombreAsignatura  = course.FullName,
-                    MoodleGradeItemId = module.Instance ?? module.Id,
+                    MoodleActivityId  = module.Id,
                     NombreActividad   = module.Name,
                     UnidadTematica    = string.IsNullOrWhiteSpace(section.Name)
                                             ? $"Unidad {section.Section}"

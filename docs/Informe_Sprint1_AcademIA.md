@@ -1371,7 +1371,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | Entity Framework Core + SQL Server | Persistencia y bitácora | Transacciones confiables y migraciones. |
 | xUnit | Pruebas de mapeo e idempotencia | Evitan duplicados al repetir la sincronización. |
 
-**Descripción de lo construido:** El flujo de calificaciones consulta usuarios matriculados, guarda matrículas de quienes Moodle identifica como estudiantes y persiste cursos, actividades y calificaciones. El repositorio registra sincronizaciones completas/incompletas y las claves de Moodle ayudan a evitar duplicados. No se ha comprobado la idempotencia con ejecuciones reales contra SQL Server y Moodle; la bitácora cubre el flujo de calificaciones, no una sincronización completa de todos los cursos.
+**Descripción de lo construido:** El flujo de calificaciones consulta usuarios matriculados, guarda matrículas de quienes Moodle identifica como estudiantes y persiste cursos, actividades y calificaciones. El repositorio registra sincronizaciones completas/incompletas y las claves de Moodle ayudan a evitar duplicados. La sincronización real e idempotencia se comprobaron posteriormente contra SQL Server y Moodle; la evidencia y el alcance de esa prueba se detallan en la sección 23.9.
 
 ## 23.5 HU-05 – Sincronizar calificaciones y estados de actividad
 
@@ -1398,7 +1398,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | React.js | Pantalla de sincronización | Muestra estado, fecha y errores. |
 | xUnit y Postman | Pruebas de errores | Verifican el manejo de datos ausentes (RNF-03). |
 
-**Descripción de lo construido:** El endpoint de calificaciones obtiene datos de Moodle, persiste escala máxima, notas y estado de sincronización. Los indicadores exponen la fecha y estado de la última sincronización; la interfaz de curso muestra una advertencia si quedó incompleta. No existe una pantalla dedicada para administrar sincronizaciones y faltan pruebas con Moodle para verificar todos los escenarios de error y estados ausentes.
+**Descripción de lo construido:** El endpoint de calificaciones obtiene datos de Moodle, persiste escala máxima, notas y estado de sincronización. Los indicadores exponen la fecha y estado de la última sincronización; la interfaz de curso muestra una advertencia si quedó incompleta. La consulta exitosa de calificaciones se validó con Moodle real (sección 23.9); siguen pendientes las pruebas de errores y estados ausentes. No existe una pantalla dedicada para administrar sincronizaciones.
 
 ## 23.6 HU-06 – Seleccionar curso y listar estudiantes
 
@@ -1422,7 +1422,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | React.js | Selección de curso y tabla de estudiantes | Interfaz con búsqueda, filtros y paginación. |
 | xUnit y Postman | Pruebas de autorización y filtros | Verifican accesos 403 y resultados filtrados. |
 
-**Descripción de lo construido:** La pantalla lista cursos obtenidos de la API. El detalle consulta estudiantes matriculados con búsqueda, filtro de estado y paginación; la API verifica la asignación del docente antes de entregar información académica. La selección de período no está implementada y los controles de acceso, filtros y resultados requieren pruebas funcionales.
+**Descripción de lo construido:** La pantalla lista cursos obtenidos de la API. El detalle consulta estudiantes matriculados con búsqueda, filtro de estado y paginación; la API verifica la asignación del docente antes de entregar información académica. La selección de período no está implementada. La búsqueda, el filtro, la lista real y el rechazo de un curso no asignado se comprobaron manualmente (sección 23.9); no hay una suite automatizada de aceptación.
 
 ## 23.7 HU-07 – Consultar el panel básico de indicadores
 
@@ -1445,7 +1445,7 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 1 (19/10/2026 – 29/10/
 | React.js | Panel de indicadores | Tarjetas, gráfico y advertencias. |
 | xUnit | Pruebas unitarias de indicadores | Comprueban los cálculos con un conjunto de datos conocido (RNF-06). |
 
-**Descripción de lo construido:** El panel obtiene del API el promedio normalizado a 100, distribución, actividades evaluadas, matrículas, progreso y datos paginados de estudiantes. Las notas sin escala no se convierten en cero; se informa la fuente Moodle, última sincronización y advertencia de sincronización incompleta. La validación con datos reales de SQL Server y Moodle está pendiente, por lo que la historia aún no se declara aceptada.
+**Descripción de lo construido:** El panel obtiene del API el promedio normalizado a 100, distribución, actividades evaluadas, matrículas, progreso y datos paginados de estudiantes. Las notas sin escala no se convierten en cero; se informa la fuente Moodle, última sincronización y advertencia de sincronización incompleta. El panel se validó con datos reales de SQL Server y Moodle (sección 23.9); los escenarios de datos incompletos siguen pendientes y esta prueba manual no reemplaza la aceptación formal del equipo.
 
 ## 23.8 Validación técnica del repositorio
 
@@ -1458,20 +1458,35 @@ Esta validación se realizó durante la revisión posterior del código y no rep
 | Análisis estático frontend | Aprobado, sin advertencias | `npm run lint` desde `frontend` |
 | Smoke test HTTP | `/health`, `/health/database` y OpenAPI de desarrollo respondieron 200; `GET /api/cursos` sin JWT respondió 401 | API local con claves temporales; no se mutó la base |
 | Pruebas automatizadas | No ejecutadas; no se encontró proyecto de pruebas .NET ni script `test` en `frontend/package.json` | Revisión de la solución y manifiesto |
-| Esquema y flujo académico SQL/Moodle | Pendiente; la base local está accesible, pero conserva el esquema anterior y no se ejecutaron scripts ni sincronización para no modificar datos locales | Requiere aprobación para actualizar la base y credenciales/servicios Moodle |
+| Esquema y flujo académico SQL/Moodle | Aprobado en ejecución local autorizada; se aplicaron esquema y semilla, y se sincronizaron Moodle y SQL Server | Evidencia manual detallada en la sección 23.9 |
 | Dependencias NuGet | Corregido: `System.Security.Cryptography.Pkcs` transitivo 9.0.11 tenía un hallazgo alto y uno medio; se fijó 9.0.21. `dotnet list package --vulnerable --include-transitive` y la evaluación CVE de dependencias directas no reportaron vulnerabilidades conocidas | Auditoría NuGet y evaluación CVE |
+
+## 23.9 Validación funcional posterior con SQL Server y Moodle
+
+Estas pruebas manuales se realizaron después de autorizar la actualización de la base local. No son resultados históricos del Sprint 1 ni una suite automatizada.
+
+| Comprobación | Resultado | Evidencia |
+|---|---|---|
+| Sincronización de curso, estudiantes y calificaciones | Aprobada | Moodle devolvió 3 matrículas de estudiantes, 3 actividades evaluables y 9 calificaciones; los datos quedaron disponibles en SQL Server |
+| Idempotencia | Aprobada | Se repitió la sincronización: no aumentaron las actividades, matrículas ni calificaciones duplicadas; quedaron dos registros de sincronización |
+| Mapeo temático | Aprobado | `GET /api/MapeoTematico/2` respondió con cuatro elementos de contenido Moodle |
+| Autenticación y autorización | Aprobadas para los casos ejecutados | Inicio de sesión válido en API e interfaz; endpoint protegido sin token respondió 401 y acceso docente a un curso no asignado respondió 403 |
+| Listado, búsqueda y filtros | Aprobados manualmente | El curso mostró tres estudiantes; un término sin coincidencias mostró cero y al limpiar la búsqueda volvieron los tres resultados; también se comprobó el filtro de estado |
+| Panel de indicadores | Aprobado para datos disponibles | Promedio general 24,78/100, 3 de 3 actividades evaluadas, progreso 100 % y fecha/fuente Moodle visibles |
+| Casos de error y datos ausentes | Pendientes | No se deshabilitó deliberadamente un servicio Moodle ni se generó una sincronización incompleta |
+| Automatización | No ejecutada | No se encontró un proyecto de pruebas .NET ni un script `test` en `frontend/package.json`; la evidencia anterior es manual |
 
 ---
 
 # 24. TESTING DE LAS HISTORIAS DE USUARIO
 
-Para cada Historia de Usuario se definen dos casos de prueba (14 en total), tomados de sus criterios de aceptación (sección 14). En esta revisión no se ejecutaron esos 14 casos y no se encontró evidencia previa de su ejecución; por ello se marcan como pendientes de evidencia del equipo, no como fallidos. La compilación y el lint de la sección 23.8 no sustituyen estos casos de aceptación.
+Para cada Historia de Usuario se definen dos casos de prueba (14 en total), tomados de sus criterios de aceptación (sección 14). Se ejecutó manualmente un subconjunto con SQL Server y Moodle reales; la sección 23.9 concentra esa evidencia. Las filas no cubiertas siguen pendientes, no se consideran fallidas. No se ejecutó una suite automatizada y la compilación/lint de la sección 23.8 no sustituyen los casos de aceptación restantes.
 
 ## 24.1 HU-01 – Iniciar sesión en el sistema
 
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
-| Inicio de sesión válido | Usuario y contraseña válidos y botón Ingresar | Recibe un JWT con su rol y es redirigido a la pantalla inicial | Pendiente de evidencia del equipo |
+| Inicio de sesión válido | Usuario y contraseña válidos y botón Ingresar | Recibe un JWT con su rol y es redirigido a la pantalla inicial | Aprobado manualmente en API e interfaz con cuenta temporal de prueba |
 | Credenciales incorrectas | Contraseña errónea y botón Ingresar | Mensaje «Credenciales incorrectas», sin token (401) | Pendiente de evidencia del equipo |
 
 ## 24.2 HU-02 – Restringir el acceso por rol y por curso
@@ -1479,7 +1494,7 @@ Para cada Historia de Usuario se definen dos casos de prueba (14 en total), toma
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
 | Rol sin permiso | Token de Docente que intenta abrir la configuración de Moodle | El servicio responde 403 | Pendiente de evidencia del equipo |
-| Curso no asignado | Docente que consulta un curso que no tiene asignado | Solo recibe sus cursos; el acceso directo al otro curso responde 403 | Pendiente de evidencia del equipo |
+| Curso no asignado | Docente que consulta un curso que no tiene asignado | Solo recibe sus cursos; el acceso directo al otro curso responde 403 | Aprobado: la consulta al curso no asignado respondió 403 |
 
 ## 24.3 HU-03 – Configurar y verificar la conexión con Moodle
 
@@ -1492,28 +1507,28 @@ Para cada Historia de Usuario se definen dos casos de prueba (14 en total), toma
 
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
-| Sincronización de cursos | Ejecutar la sincronización con la conexión verificada | Cursos y matriculados almacenados en SQL Server | Pendiente de evidencia del equipo |
-| Idempotencia | Ejecutar la sincronización dos veces seguidas | Sin duplicados y con registro en la bitácora (fecha, resultado y errores) | Pendiente de evidencia del equipo |
+| Sincronización de cursos | Ejecutar la sincronización con la conexión verificada | Cursos y matriculados almacenados en SQL Server | Aprobado manualmente: 3 matrículas de estudiantes persistidas |
+| Idempotencia | Ejecutar la sincronización dos veces seguidas | Sin duplicados y con registro en la bitácora (fecha, resultado y errores) | Aprobado manualmente: dos registros de sincronización sin duplicar matrículas, actividades ni calificaciones |
 
 ## 24.5 HU-05 – Sincronizar calificaciones y estados de actividad
 
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
-| Sincronización de calificaciones | Sincronizar calificaciones de cursos ya importados | Ítems, notas, estados y escala almacenados | Pendiente de evidencia del equipo |
+| Sincronización de calificaciones | Sincronizar calificaciones de cursos ya importados | Ítems, notas, estados y escala almacenados | Aprobado manualmente: 3 actividades y 9 calificaciones persistidas |
 | Datos no disponibles | Moodle sin permiso en una de las funciones consultadas | Error registrado, estado «Incompleta» y notas ausentes como «sin dato» | Pendiente de evidencia del equipo |
 
 ## 24.6 HU-06 – Seleccionar curso y listar estudiantes
 
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
-| Listado, búsqueda y filtro | Seleccionar un curso, buscar por nombre y aplicar el filtro | Resultados paginados que coinciden con la búsqueda y el filtro | Pendiente de evidencia del equipo |
-| Curso no autorizado | Consultar un curso ajeno por identificador directo | El sistema responde 403 | Pendiente de evidencia del equipo |
+| Listado, búsqueda y filtro | Seleccionar un curso, buscar por nombre y aplicar el filtro | Resultados paginados que coinciden con la búsqueda y el filtro | Aprobado manualmente en API e interfaz: 3 estudiantes, búsqueda sin coincidencias y filtro de estado |
+| Curso no autorizado | Consultar un curso ajeno por identificador directo | El sistema responde 403 | Aprobado: la consulta al curso no asignado respondió 403 |
 
 ## 24.7 HU-07 – Consultar el panel básico de indicadores
 
 | Caso | Entrada | Resultado esperado | Resultado obtenido |
 |---|---|---|---|
-| Panel con datos completos | Abrir el panel de un curso sincronizado | Promedio con escala, distribución, actividades evaluadas, progreso, fuente y fecha | Pendiente de evidencia del equipo |
+| Panel con datos completos | Abrir el panel de un curso sincronizado | Promedio con escala, distribución, actividades evaluadas, progreso, fuente y fecha | Aprobado manualmente: promedio 24,78/100, 3/3 actividades evaluadas, progreso, fuente y fecha visibles |
 | Datos incompletos | Abrir el panel de un curso con sincronización incompleta | Advertencia visible e indicadores no disponibles como «sin datos» | Pendiente de evidencia del equipo |
 
 ---

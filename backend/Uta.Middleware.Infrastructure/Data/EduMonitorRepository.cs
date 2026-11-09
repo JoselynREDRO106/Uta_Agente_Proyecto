@@ -332,9 +332,9 @@ internal sealed class EduMonitorRepository(EduMonitorDbContext dbContext) : IEdu
                     ? $"Unidad {section.Section}: {module.Name}"
                     : $"{section.Name}: {module.Name}"
             }))
-            .Where(item => (item.Module.Instance ?? item.Module.Id) > 0)
+            .Where(item => item.Module.Id > 0)
             .ToList();
-        var moodleActivityIds = modules.Select(item => item.Module.Instance ?? item.Module.Id)
+        var moodleActivityIds = modules.Select(item => item.Module.Id)
             .Distinct()
             .ToArray();
 
@@ -344,7 +344,7 @@ internal sealed class EduMonitorRepository(EduMonitorDbContext dbContext) : IEdu
 
         foreach (var item in modules)
         {
-            var moodleActivityId = item.Module.Instance ?? item.Module.Id;
+            var moodleActivityId = item.Module.Id;
             if (!activities.TryGetValue(moodleActivityId, out var activity))
             {
                 activity = new ActividadRow
@@ -374,7 +374,7 @@ internal sealed class EduMonitorRepository(EduMonitorDbContext dbContext) : IEdu
 
         foreach (var item in modules)
         {
-            var activityId = activities[item.Module.Instance ?? item.Module.Id].Id;
+            var activityId = activities[item.Module.Id].Id;
             var content = Limit(item.Content, 150);
             if (!existingMappings.Any(mapping =>
                     mapping.ActivityId == activityId && mapping.MinimumContent == content))
@@ -463,9 +463,7 @@ internal sealed class EduMonitorRepository(EduMonitorDbContext dbContext) : IEdu
     {
         var validItems = items.Where(item => item.Id > 0).ToArray();
         var moodleActivityIds = validItems
-            .Select(item => item.ItemInstance.GetValueOrDefault() > 0
-                ? item.ItemInstance!.Value
-                : item.Id)
+            .Select(item => item.CourseModuleId > 0 ? item.CourseModuleId : item.Id)
             .Distinct()
             .ToArray();
         var rows = await dbContext.Actividades
@@ -474,9 +472,7 @@ internal sealed class EduMonitorRepository(EduMonitorDbContext dbContext) : IEdu
 
         foreach (var item in validItems)
         {
-            var moodleActivityId = item.ItemInstance.GetValueOrDefault() > 0
-                ? item.ItemInstance!.Value
-                : item.Id;
+            var moodleActivityId = item.CourseModuleId > 0 ? item.CourseModuleId : item.Id;
             if (!rows.TryGetValue(moodleActivityId, out var row))
             {
                 row = new ActividadRow
@@ -498,9 +494,7 @@ internal sealed class EduMonitorRepository(EduMonitorDbContext dbContext) : IEdu
         await dbContext.SaveChangesAsync(cancellationToken);
         return validItems.ToDictionary(
             item => item.Id,
-            item => rows[item.ItemInstance.GetValueOrDefault() > 0
-                ? item.ItemInstance!.Value
-                : item.Id].Id);
+            item => rows[item.CourseModuleId > 0 ? item.CourseModuleId : item.Id].Id);
     }
 
     private static decimal? ParseGrade(string grade) =>

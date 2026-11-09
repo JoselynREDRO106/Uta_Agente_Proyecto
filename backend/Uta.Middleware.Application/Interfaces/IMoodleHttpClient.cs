@@ -16,14 +16,14 @@ public interface IMoodleHttpClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Obtiene las calificaciones de todos los usuarios de una asignatura
-    /// usando la función core_grades_get_grades de Moodle REST.
+    /// Obtiene las calificaciones de los usuarios indicados mediante el reporte de calificaciones de Moodle.
     /// </summary>
     /// <param name="courseId">ID del curso en Moodle.</param>
     /// <param name="cancellationToken">Token de cancelación.</param>
     /// <returns>DTO con ítems y calificaciones del curso.</returns>
     Task<MoodleGradesResponseDto> GetGradesByCourseAsync(
         int courseId,
+        IEnumerable<int> userIds,
         CancellationToken cancellationToken = default);
 
     /// <summary>

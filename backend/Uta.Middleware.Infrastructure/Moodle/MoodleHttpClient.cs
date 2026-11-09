@@ -59,15 +59,10 @@ public class MoodleHttpClient : IMoodleHttpClient
     /// <inheritdoc/>
     public async Task<MoodleGradesResponseDto> GetGradesByCourseAsync(
         int courseId,
+        IEnumerable<int> userIds,
         CancellationToken cancellationToken = default)
     {
-        var url = BuildUrl("core_grades_get_grades", new Dictionary<string, string>
-        {
-            ["courseid"] = courseId.ToString()
-        });
-
-        return await GetAsync<MoodleGradesResponseDto>(url, cancellationToken)
-               ?? new MoodleGradesResponseDto();
+        return await GetGradesByUserAsync(courseId, userIds, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -76,22 +71,74 @@ public class MoodleHttpClient : IMoodleHttpClient
         IEnumerable<int> userIds,
         CancellationToken cancellationToken = default)
     {
-        var extraParams = new Dictionary<string, string>
+        var ids = userIds.Where(id => id > 0).Distinct().ToArray();
+        if (ids.Length == 0)
         {
-            ["courseid"] = courseId.ToString()
-        };
-
-        // Moodle REST acepta userids[0], userids[1], ...
-        int index = 0;
-        foreach (var userId in userIds)
-        {
-            extraParams[$"userids[{index}]"] = userId.ToString();
-            index++;
+            return new MoodleGradesResponseDto();
         }
 
-        var url = BuildUrl("core_grades_get_grades", extraParams);
-        return await GetAsync<MoodleGradesResponseDto>(url, cancellationToken)
-               ?? new MoodleGradesResponseDto();
+        using var concurrencyLimit = new SemaphoreSlim(4);
+        var responses = await Task.WhenAll(ids.Select(async userId =>
+        {
+            await concurrencyLimit.WaitAsync(cancellationToken);
+            try
+            {
+                var response = await GetAsync<MoodleUserGradeItemsResponseDto>(
+                    BuildUrl("gradereport_user_get_grade_items", new Dictionary<string, string>
+                    {
+                        ["courseid"] = courseId.ToString(),
+                        ["userid"] = userId.ToString()
+                    }),
+                    cancellationToken);
+                return (UserId: userId, Response: response ?? new MoodleUserGradeItemsResponseDto());
+            }
+            finally
+            {
+                concurrencyLimit.Release();
+            }
+        }));
+
+        var items = responses
+            .SelectMany(result => result.Response.UserGrades.SelectMany(user => user.GradeItems))
+            .Where(item => item.ItemType.Equals("mod", StringComparison.OrdinalIgnoreCase))
+            .GroupBy(item => item.Id)
+            .Select(group => group.First())
+            .Select(item => new MoodleGradeItemDto
+            {
+                Id = item.Id,
+                ItemName = item.ItemName,
+                ItemType = item.ItemType,
+                ItemModule = item.ItemModule,
+                ItemInstance = item.ItemInstance,
+                CourseModuleId = item.CourseModuleId,
+                GradeMin = item.GradeMin ?? 0,
+                GradeMax = item.GradeMax ?? 0
+            })
+            .ToList();
+        var grades = responses.SelectMany(result =>
+            result.Response.UserGrades
+                .Where(user => user.UserId > 0)
+                .SelectMany(user => user.GradeItems
+                    .Where(item => item.ItemType.Equals("mod", StringComparison.OrdinalIgnoreCase))
+                    .Select(item => new MoodleUserGradeDto
+                {
+                    UserId = user.UserId,
+                    ItemId = item.Id,
+                    Grade = item.GradeRaw?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+                    DateSubmitted = item.GradeDateSubmitted?.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+                    DateGraded = item.GradeDateGraded?.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty
+                })))
+            .ToList();
+        var warnings = responses.SelectMany(result => result.Response.Warnings)
+            .Select(warning => warning.ValueKind == JsonValueKind.Object
+                && warning.TryGetProperty("message", out var message)
+                ? message.GetString() ?? warning.GetRawText()
+                : warning.GetRawText())
+            .ToList();
+
+        return new MoodleGradesResponseDto { Items = items, Grades = grades, Warnings = warnings };
     }
 
     /// <inheritdoc/>
@@ -147,6 +194,21 @@ public class MoodleHttpClient : IMoodleHttpClient
     {
         using var response = await _httpClient.GetAsync(url, cancellationToken);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<T>(JsonOptions, cancellationToken);
+        var content = await response.Content.ReadAsStringAsync(cancellationToken);
+        using var document = JsonDocument.Parse(content);
+        if (document.RootElement.ValueKind == JsonValueKind.Object
+            && document.RootElement.TryGetProperty("exception", out _))
+        {
+            var errorCode = document.RootElement.TryGetProperty("errorcode", out var code)
+                ? code.GetString()
+                : "unknown";
+            var message = document.RootElement.TryGetProperty("message", out var details)
+                ? details.GetString()
+                : "Moodle devolvió un error en la respuesta.";
+            throw new HttpRequestException(
+                $"Moodle Web Service error ({errorCode}): {message}");
+        }
+
+        return JsonSerializer.Deserialize<T>(content, JsonOptions);
     }
 }
