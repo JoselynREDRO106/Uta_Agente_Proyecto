@@ -16,12 +16,11 @@ public sealed class GestionarCursosUseCase(
         int courseId,
         CancellationToken cancellationToken = default)
     {
-        var course = await moodleHttpClient.GetCourseAsync(courseId, cancellationToken);
-        var savedCourse = await repository.SaveCourseAsync(course, cancellationToken);
         try
         {
-            var usersTask = moodleHttpClient.GetEnrolledUsersAsync(courseId, cancellationToken);
-            var users = await usersTask;
+            var course = await moodleHttpClient.GetCourseAsync(courseId, cancellationToken);
+            var savedCourse = await repository.SaveCourseAsync(course, cancellationToken);
+            var users = await moodleHttpClient.GetEnrolledUsersAsync(courseId, cancellationToken);
             var grades = await moodleHttpClient.GetGradesByCourseAsync(
                 courseId, users
                     .Where(user => user.Roles.Any(role =>

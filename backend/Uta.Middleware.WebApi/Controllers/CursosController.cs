@@ -29,6 +29,21 @@ public sealed class CursosController(
         return Ok(courses.Select(course => new CursoResponse(course.MoodleId, course.Name)).ToArray());
     }
 
+    [HttpGet("sincronizaciones")]
+    [Authorize(Roles = "Administrador técnico")]
+    [ProducesResponseType(typeof(IReadOnlyCollection<SincronizacionDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyCollection<SincronizacionDto>>> ObtenerHistorialSincronizaciones(
+        [FromQuery] int limit = 50,
+        CancellationToken cancellationToken = default)
+    {
+        if (limit is < 1 or > 100)
+        {
+            return BadRequest("El límite debe estar entre 1 y 100.");
+        }
+
+        return Ok(await repository.GetSyncHistoryAsync(limit, cancellationToken));
+    }
+
     [HttpGet("{courseId:int}/estudiantes")]
     [ProducesResponseType(typeof(PaginaDto<EstudianteCursoDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

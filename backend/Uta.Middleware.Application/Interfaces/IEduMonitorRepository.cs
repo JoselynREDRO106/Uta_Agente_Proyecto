@@ -29,6 +29,10 @@ public interface IEduMonitorRepository
         int moodleCourseId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<SincronizacionDto>> GetSyncHistoryAsync(
+        int limit,
+        CancellationToken cancellationToken = default);
+
     Task RecordSyncAsync(
         int moodleCourseId,
         string status,
