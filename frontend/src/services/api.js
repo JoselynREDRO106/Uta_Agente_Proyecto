@@ -1,4 +1,5 @@
 const apiUrl = import.meta.env.VITE_API_URL
+const identityUrl = import.meta.env.VITE_IDENTITY_API_URL
 const moodleIntegrationUrl = import.meta.env.VITE_MOODLE_INTEGRATION_URL || 'http://localhost:5010'
 const accessTokenKey = 'edumonitor.accessToken'
 const userKey = 'edumonitor.user'
@@ -78,7 +79,7 @@ export async function login(email, password) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
-  })
+  }, identityUrl || getApiUrl())
 
   sessionStorage.setItem(accessTokenKey, result.accessToken)
   sessionStorage.setItem(userKey, JSON.stringify({ nombre: result.nombre, rol: result.rol }))

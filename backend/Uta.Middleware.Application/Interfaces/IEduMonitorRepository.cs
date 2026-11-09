@@ -12,8 +12,17 @@ public interface IEduMonitorRepository
         int? userId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<CursoDto>> GetCoursesForMoodleIdsAsync(
+        IReadOnlyCollection<int> moodleCourseIds,
+        CancellationToken cancellationToken = default);
+
     Task<bool> IsCourseAssignedAsync(
         int userId,
+        int moodleCourseId,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> IsCourseAssignedByMoodleIdAsync(
+        IReadOnlyCollection<int> moodleCourseIds,
         int moodleCourseId,
         CancellationToken cancellationToken = default);
 

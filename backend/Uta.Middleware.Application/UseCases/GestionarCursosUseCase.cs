@@ -5,7 +5,8 @@ namespace Uta.Middleware.Application.UseCases;
 
 public sealed class GestionarCursosUseCase(
     IMoodleHttpClient moodleHttpClient,
-    IEduMonitorRepository repository) : IGestionarCursosUseCase
+    IEduMonitorRepository repository,
+    IMoodleAcademicSyncClient? integrationSyncClient = null) : IGestionarCursosUseCase
 {
     public Task<IReadOnlyCollection<CursoDto>> ObtenerAsync(
         int? userId,
@@ -16,6 +17,11 @@ public sealed class GestionarCursosUseCase(
         int courseId,
         CancellationToken cancellationToken = default)
     {
+        if (integrationSyncClient is not null)
+        {
+            return await integrationSyncClient.SynchronizeCourseAsync(courseId, cancellationToken);
+        }
+
         try
         {
             var course = await moodleHttpClient.GetCourseAsync(courseId, cancellationToken);

@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace Uta.Middleware.Infrastructure.Data;
+namespace Uta.Middleware.Application.Security;
 
 public static class PasswordHashing
 {
