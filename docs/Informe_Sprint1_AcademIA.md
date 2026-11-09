@@ -1496,7 +1496,44 @@ Validación manual posterior al Sprint 1; no debe contabilizarse como evidencia 
 | Recuperación y reintento | Aprobados | Tras reiniciar Integración, el reintento del curso terminó correctamente y el historial reflejó estado `Completa` |
 | UI por navegador y automatización permanente | Pendientes | Se validó build/lint y los endpoints por HTTP; no se añadió proyecto de pruebas ni se hizo recorrido visual automatizado |
 
-El corte es deliberadamente parcial: la configuración Moodle reside en su nueva base, pero cursos, matrículas, actividades y calificaciones siguen guardándose en `EduMonitor`. Identidad sigue en el middleware existente; Análisis aún no tiene proceso/base propia; RabbitMQ, outbox, consumidores idempotentes y selección de período siguen pendientes. El historial y el reintento de sincronizaciones ya están implementados; su interfaz tiene validación de build/lint, pero aún no recorrido visual. Cuando Integración Moodle no está disponible, los datos previamente persistidos siguen consultándose desde la API académica, pero la sincronización nueva falla explícitamente y queda registrada para seguimiento.
+El corte es deliberadamente parcial: la configuración Moodle reside en su nueva base, pero cursos, matrículas, actividades y calificaciones siguen guardándose en `EduMonitor`. En la fecha de esta validación, Identidad seguía en el middleware; su extracción se documenta como un incremento posterior en la sección 23.11. Análisis aún no tiene proceso/base propia; RabbitMQ, outbox, consumidores idempotentes y selección de período siguen pendientes. El historial y el reintento de sincronizaciones ya están implementados; su interfaz tiene validación de build/lint, pero aún no recorrido visual. Cuando Integración Moodle no está disponible, los datos previamente persistidos siguen consultándose desde la API académica, pero la sincronización nueva falla explícitamente y queda registrada para seguimiento.
+
+## 23.11 Segundo incremento de la migración gradual: Identidad
+
+Implementación y validación posterior al Sprint; no debe contabilizarse como evidencia histórica del Sprint.
+
+| Comprobación | Resultado | Evidencia |
+|---|---|---|
+| API Identity independiente | Implementada; build aprobado | `Uta.Identity.WebApi`, proceso separado en `localhost:5020` |
+| Base lógica de Identidad | Aprobada | Se aplicó `database/004_identity.sql`; se copiaron 1 administrador y 0 asignaciones. La segunda ejecución no duplicó registros ni eliminó el origen |
+| Salud de la API y su base | Aprobadas | `/health/database` respondió `ok` en `localhost:5020` |
+| Rechazo de credenciales inexistentes | Aprobado | `POST /api/auth/login` respondió 401 sin revelar si el correo existe |
+| Login válido, bootstrap y creación de usuarios | Implementados; validación funcional pendiente | No se usaron credenciales reales ni se creó otra cuenta para la prueba |
+| Validación JWT y permisos de curso | Implementados para emisión nueva; build aprobado | JWT comparte la clave con Middleware e incluye asignaciones; se conservó compatibilidad con JWT anteriores |
+| Frontend | Build y lint aprobados | `VITE_IDENTITY_API_URL` dirige el login al proceso Identity; las demás llamadas conservan `VITE_API_URL` |
+| Integración, Análisis y propiedad de datos académicos | Pendientes | Cursos, matrículas, actividades y calificaciones todavía pertenecen a `EduMonitor`; falta una proyección asíncrona con outbox/consumidores hacia Análisis |
+
+La migración de cuentas conserva las filas de origen y exige resolver explícitamente colisiones de ID/correo. La asignación de cursos se emite como claims JWT, por lo que un cambio administrativo de asignaciones entra en vigor al renovar el token. Las rutas de autenticación antiguas del middleware permanecen temporalmente como compatibilidad; el frontend debe configurar `VITE_IDENTITY_API_URL` para utilizar el servicio nuevo.
+
+## 23.12 Tercer incremento: propiedad académica y proyección de Análisis
+
+Implementación y validación posterior al Sprint; no debe contabilizarse como evidencia histórica del Sprint.
+
+| Comprobación | Resultado | Evidencia |
+|---|---|---|
+| Integración dueña de los snapshots académicos | Implementada | La sincronización guarda curso, matrículas, actividades, calificaciones, historial y evento outbox en `MoodleIntegration`; las rutas heredadas de calificaciones y mapeo pasan por la misma sincronización y no persisten copias en `EduMonitor` cuando se habilita el puente |
+| Publicación y proyección asíncronas | Implementadas; broker pendiente de prueba | Exchange/cola durables, publisher confirms, reintento por ID, consumer con ack/nack e inbox idempotente |
+| Base de Análisis | Aprobada localmente | `database/006_academic_analysis.sql` crea `EduMonitorAnalysis`; health check de base respondió 200 |
+| Migración inicial e idempotencia | Aprobadas | Se aplicaron dos veces `005_academic_integration.sql` y `006_academic_analysis.sql`; se verificaron 2 cursos, 2 eventos de outbox, 3 tablas de Análisis y JSON válido en snapshots/eventos |
+| Health checks de los tres procesos activos | Aprobados | Middleware, Integración y Análisis respondieron 200 en `/health` y `/health/database` |
+| Build .NET | Aprobado, 0 errores y 0 advertencias | `dotnet build backend\Uta.AcademicPerformance.Middleware.slnx --no-restore` |
+| Build React | Aprobado | `npm run build` |
+| Remediación de dependencia | Aprobada | Se actualizó `System.Security.Cryptography.Pkcs` a 10.0.13; `dotnet list package --vulnerable --include-transitive` reportó cero paquetes vulnerables para Análisis |
+| RabbitMQ disponible y proyección consumida | Pendiente | No se validó caída/recuperación del broker ni entrega de eventos en esta ejecución; los eventos migrados siguen en outbox hasta disponer del broker |
+| Aislamiento ante fallas de dependencias del gateway | Aprobado en las rutas probadas | Con Análisis e Integración detenidos, `/health` de Middleware respondió 200 y las consultas de cursos/historial respondieron 503 explícito |
+| Prueba integral de fallas API/broker desde el frontend | Pendiente | Falta detener cada API por separado y validar las funciones restantes en navegador; RabbitMQ no pudo iniciarse porque Docker Desktop no estaba disponible |
+
+El código y el esquema ya trasladan la propiedad académica y exponen consultas desde Análisis, pero la validación del flujo asíncrono en ejecución depende de RabbitMQ. SQL Server Express aloja las bases locales y sigue siendo un punto único de falla; separar las bases lógicas no elimina ese riesgo. No se hicieron commit ni push de este incremento.
 
 ---
 

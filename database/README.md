@@ -9,9 +9,19 @@ El backend de desarrollo se conecta por autenticación integrada de Windows a `l
 ```powershell
 sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\001_schema.sql
 sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\002_seed.sql
+sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\003_moodle_integration.sql
+sqlcmd -S 'localhost\SQLEXPRESS' -E -C -f 65001 -i database\004_identity.sql
+sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\005_academic_integration.sql
+sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\006_academic_analysis.sql
 ```
 
 `-E` usa la identidad de Windows de la terminal y `-C` confía en el certificado local. La identidad debe tener permisos para crear la base y sus tablas la primera vez.
+
+`004_identity.sql` crea `EduMonitorIdentity` y copia cuentas/asignaciones desde `EduMonitor` sin eliminar las tablas de origen. Se puede ejecutar de nuevo sin duplicar registros. Si hay una colisión de ID/correo, el script se detiene para evitar asociar cuentas incorrectamente. Tras el corte, inicia `Uta.Identity.WebApi`; el middleware conserva temporalmente las tablas antiguas para compatibilidad con JWT y rutas heredadas.
+
+`005_academic_integration.sql` crea las tablas de propiedad académica y outbox en `MoodleIntegration`, e importa allí una copia inicial de los cursos, matrículas, actividades y calificaciones existentes. `006_academic_analysis.sql` crea la base lógica independiente `EduMonitorAnalysis`; los snapshots existentes se proyectan allí mediante RabbitMQ y el outbox. Ninguno de estos pasos elimina los datos de `EduMonitor`.
+
+Para activar la sincronización entre servicios, configura en Middleware `MoodleIntegration__BaseUrl` y `MoodleIntegration__ApiKey` (la misma clave local configurada como `MoodleIntegration__ApiKey` en Integration, con al menos 32 bytes). Configura las mismas credenciales RabbitMQ bajo `RabbitMq__*` en Integration y Analysis. No guardes estas claves en archivos versionados.
 
 ## SQL Server en Docker (alternativa)
 
@@ -39,5 +49,7 @@ docker exec -it edumonitor-sql bash -lc '/opt/mssql-tools18/bin/sqlcmd -S localh
 | `USUARIO_SISTEMA` | Cuentas del middleware con hash de contraseña PBKDF2 y rol. |
 | `ASIGNACION_DOCENTE_CURSO` | Cursos Moodle que puede consultar cada docente del sistema. |
 | `SINCRONIZACION_LOG` | Fecha UTC, resultado y resumen de errores por sincronización. |
+
+Con la extracción de Identidad, `USUARIO_SISTEMA` y `ASIGNACION_DOCENTE_CURSO` se copian también a la base lógica `EduMonitorIdentity`; el middleware heredado mantiene sus tablas de origen durante la migración gradual. Los nuevos JWT de Identidad llevan la lista de cursos asignados y el middleware la valida localmente.
 
 `ACTIVIDAD.nota_maxima` conserva la escala informada por Moodle; las escalas desconocidas permanecen nulas y no se usan para fabricar promedios. El seed crea un curso, tres estudiantes matriculados, tres actividades y ejemplos de los tres estados. La nota de calificación puede ser cero; los estados sin entrega y pendiente se guardan sin nota. Las cuentas del sistema no tienen contraseñas de demostración: el primer administrador se crea con el bootstrap de una sola vez descrito en el README raíz.

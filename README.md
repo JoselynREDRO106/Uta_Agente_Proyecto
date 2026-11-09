@@ -41,7 +41,7 @@ Para usar SQL Server sin Docker, no ejecutes `docker compose` para SQL Server. L
 
 ## Conexión con Moodle
 
-Moodle se consume mediante Web Services REST; el proyecto no se conecta directamente a la base de datos de Moodle. En el primer paso de la migración gradual, `Uta.MoodleIntegration.WebApi` es un proceso independiente que guarda la URL y el token cifrado en la base lógica `MoodleIntegration`, permite verificar la conexión y ofrece un puente interno para las operaciones Moodle del middleware. El token nunca se devuelve a la interfaz. La persistencia académica de cursos, matrículas, actividades y calificaciones continúa temporalmente en `EduMonitor`; su traslado al servicio dueño de Integración es una etapa posterior.
+Moodle se consume mediante Web Services REST; el proyecto no se conecta directamente a la base de datos de Moodle. La migración gradual separa Identidad (`EduMonitorIdentity`), Integración Moodle (`MoodleIntegration`) y Análisis Académico (`EduMonitorAnalysis`). Integración guarda la configuración Moodle y es dueña de los snapshots de cursos, matrículas, actividades y calificaciones; publica cambios mediante un outbox transaccional y RabbitMQ. Análisis mantiene su propia proyección de lectura e ignora eventos duplicados. El frontend conserva las rutas del middleware como gateway. Las tres bases lógicas pueden compartir SQL Server local, que sigue siendo un punto único de falla.
 
 Si ya tienes Moodle instalado localmente, inicia Apache/MariaDB con tu instalación habitual. No necesitas Docker para Moodle.
 
@@ -88,9 +88,9 @@ Invoke-RestMethod http://localhost:5000/health
 
 La respuesta indica `status: ok` y el servicio `EduMonitor.Middleware`. El middleware habilita CORS para el origen local del frontend (`http://localhost:5173`).
 
-#### Crear las cuentas iniciales
+#### Crear las cuentas iniciales (ruta heredada)
 
-Después de ejecutar los scripts de SQL e iniciar la API, crea el primer administrador usando una contraseña propia de al menos 12 caracteres:
+El endpoint de autenticación del middleware se conserva solo para compatibilidad con instalaciones anteriores. En una instalación nueva usa el servicio independiente de Identidad descrito abajo y evita crear cuentas por ambas rutas.
 
 ```powershell
 $bootstrapHeaders = @{ 'X-Bootstrap-Key' = $env:Authentication__BootstrapKey }
@@ -112,6 +112,27 @@ Inicia sesión desde `/login`. El administrador puede crear docentes y asignarle
 ```
 
 El bootstrap devuelve conflicto una vez que ya existe un administrador. La API exige un JWT en todos los endpoints salvo login, bootstrap inicial, salud y OpenAPI de desarrollo. El endpoint de sincronización Moodle requiere el rol `Administrador técnico`; un docente solo puede consultar cursos asignados. El cierre de sesión elimina el token del almacenamiento de sesión del navegador.
+
+### Servicio independiente de Identidad
+
+El incremento de Identidad usa el proceso `Uta.Identity.WebApi` y la base lógica `EduMonitorIdentity`. Ejecuta el script después de crear `EduMonitor` con `001_schema.sql`; copia las cuentas y asignaciones sin borrar las tablas originales:
+
+```powershell
+sqlcmd -S 'localhost\SQLEXPRESS' -E -C -f 65001 -i database\004_identity.sql
+```
+
+Inicia Identidad en `http://localhost:5020` con la misma clave JWT que utiliza el middleware académico. También configura una clave temporal de bootstrap y una cadena de conexión propia:
+
+```powershell
+$env:Authentication__Jwt__SigningKey = 'MISMA_CLAVE_ALEATORIA_DE_48_BYTES_QUE_USA_MIDDLEWARE'
+$env:Authentication__BootstrapKey = 'CLAVE_TEMPORAL_ALEATORIA'
+$env:ConnectionStrings__Identity = 'Server=localhost\SQLEXPRESS;Database=EduMonitorIdentity;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=True'
+dotnet run --project backend\Uta.Identity.WebApi\Uta.Identity.WebApi.csproj --launch-profile http
+```
+
+Si la cuenta administrador ya fue migrada desde `EduMonitor`, no es necesario volver a ejecutar el bootstrap. Para una base Identity vacía, usa `POST http://localhost:5020/api/auth/bootstrap-admin` con el encabezado `X-Bootstrap-Key` y retira la clave después del alta. El endpoint `POST /api/auth/usuarios` de Identidad crea docentes, roles y asignaciones por ID de curso Moodle.
+
+Configura `VITE_IDENTITY_API_URL=http://localhost:5020` en `frontend/.env`; el inicio de sesión usará Identidad y las demás operaciones seguirán usando `VITE_API_URL`. Ambos procesos deben validar JWT con la misma clave e issuer/audience. Identidad firma en el token la lista de cursos asignados, así el middleware valida el acceso localmente, sin llamar a Identidad por petición. Los cambios de asignación entran en vigor al emitir un nuevo token; mientras tanto, los JWT anteriores conservan su lista hasta expirar. Las rutas de autenticación del middleware se mantienen temporalmente para compatibilidad; no las uses para crear cuentas nuevas después de habilitar Identidad.
 
 ### Servicio independiente de Integración Moodle
 
@@ -150,7 +171,22 @@ dotnet run --project backend\Uta.Middleware.WebApi\Uta.Middleware.WebApi.csproj 
 
 Abre `/admin/moodle` con una cuenta `Administrador técnico`, guarda la URL y el token y usa **Verificar conexión**. El campo del token es write-only: vacío conserva el valor previamente guardado. Para Moodle remoto se exige HTTPS; HTTP solo se permite para una instancia local. El token debe habilitar `core_webservice_get_site_info`, `core_course_get_courses`, `core_enrol_get_enrolled_users`, `core_course_get_contents` y `gradereport_user_get_grade_items`.
 
-El middleware delega las nuevas sincronizaciones al proceso de Integración cuando `MoodleIntegration__BaseUrl` está configurado. Si se omite, conserva temporalmente el cliente Moodle legado para no romper instalaciones existentes. El puente usa `MoodleIntegration__ApiKey`; los endpoints internos no aceptan llamadas anónimas. La instancia SQL Server local aloja dos bases lógicas y sigue siendo un punto único de falla.
+El middleware delega las sincronizaciones al proceso de Integración cuando se configuran `MoodleIntegration__BaseUrl` y `MoodleIntegration__ApiKey`. El puente usa una clave compartida de al menos 32 bytes; los endpoints internos la validan y no aceptan llamadas anónimas. Mientras no se configure, se conserva temporalmente el cliente Moodle legado para compatibilidad.
+
+### Análisis Académico y RabbitMQ
+
+Ejecuta `database\005_academic_integration.sql` para crear las tablas de snapshots y outbox y migrar los cursos locales existentes a Integración sin borrar `EduMonitor`. Luego ejecuta `database\006_academic_analysis.sql` para crear `EduMonitorAnalysis`. Los eventos existentes quedan pendientes en el outbox hasta que RabbitMQ esté disponible.
+
+El `docker-compose.yml` incluye RabbitMQ con volúmenes persistentes y puertos ligados a `localhost`. Para iniciarlo, copia `.env.example` a `.env`, reemplaza las contraseñas de ejemplo y ejecuta:
+
+```powershell
+docker compose up -d rabbitmq
+docker compose ps rabbitmq
+```
+
+Inicia `Uta.AcademicAnalysis.WebApi` en `localhost:5030` y configura en los procesos Integration y Analysis las mismas variables `RabbitMq__HostName=localhost`, `RabbitMq__Port=5672`, `RabbitMq__UserName` y `RabbitMq__Password`. El publisher crea un exchange y una cola durables, confirma la publicación y reintenta el mensaje fallido por ID; el consumidor aplica cada evento de forma idempotente. Middleware usa `AcademicAnalysis__BaseUrl` para sus consultas; las rutas existentes de cursos, estudiantes e indicadores delegan en Análisis para los JWT con asignaciones administradas.
+
+Si RabbitMQ no está configurado, la sincronización todavía guarda datos en Integración y el evento permanece en el outbox, pero la proyección de Análisis no se actualiza. Una sesión JWT válida permite consultas durante una caída de Identidad; no permite iniciar nuevas sesiones mientras Identidad esté fuera de servicio.
 
 ## Frontend React
 
