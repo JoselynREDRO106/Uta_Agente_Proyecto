@@ -62,6 +62,30 @@ public static class InfrastructureServiceExtensions
                 client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
                 client.Timeout = TimeSpan.FromSeconds(60);
             });
+            services.AddHttpClient<IMoodleAcademicSyncClient, MoodleIntegrationSyncHttpClient>((sp, client) =>
+            {
+                var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MoodleIntegrationBridgeSettings>>().Value;
+                client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
+                client.Timeout = TimeSpan.FromMinutes(3);
+            });
+        }
+
+        var analysisSection = configuration.GetSection(AnalysisBridgeSettings.SectionName);
+        var analysisSettings = analysisSection.Get<AnalysisBridgeSettings>() ?? new AnalysisBridgeSettings();
+        if (!string.IsNullOrWhiteSpace(analysisSettings.BaseUrl))
+        {
+            if (!Uri.TryCreate(analysisSettings.BaseUrl, UriKind.Absolute, out var analysisUri)
+                || (analysisUri.Scheme != Uri.UriSchemeHttp && analysisUri.Scheme != Uri.UriSchemeHttps))
+            {
+                throw new InvalidOperationException(
+                    "AcademicAnalysis__BaseUrl must be an absolute HTTP(S) URL.");
+            }
+
+            services.Configure<AnalysisBridgeSettings>(analysisSection);
+            services.AddHttpClient<IAnalysisQueryClient, AnalysisHttpClient>((sp, client) =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
         }
 
         // Registrar casos de uso

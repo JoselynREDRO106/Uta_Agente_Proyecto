@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Uta.MoodleIntegration.WebApi.Data;
 using Uta.MoodleIntegration.WebApi.Middleware;
+using Uta.MoodleIntegration.WebApi.Messaging;
 using Uta.MoodleIntegration.WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -86,6 +87,21 @@ builder.Services.AddHttpClient("MoodleConnectionTest");
 builder.Services.AddScoped<MoodleConfigurationService>();
 builder.Services.AddScoped<MoodleConnectionTester>();
 builder.Services.AddSingleton(new IntegrationApiKey(integrationApiKey));
+var rabbitMqSection = builder.Configuration.GetSection(RabbitMqSettings.SectionName);
+var rabbitMqSettings = rabbitMqSection.Get<RabbitMqSettings>() ?? new RabbitMqSettings();
+if (!string.IsNullOrWhiteSpace(rabbitMqSettings.HostName))
+{
+    if (string.IsNullOrWhiteSpace(rabbitMqSettings.UserName)
+        || string.IsNullOrWhiteSpace(rabbitMqSettings.Password)
+        || rabbitMqSettings.Port is < 1 or > 65535)
+    {
+        throw new InvalidOperationException(
+            "RabbitMq__HostName requires RabbitMq__UserName, RabbitMq__Password, and a valid RabbitMq__Port.");
+    }
+
+    builder.Services.Configure<RabbitMqSettings>(rabbitMqSection);
+    builder.Services.AddHostedService<AcademicOutboxPublisher>();
+}
 
 var app = builder.Build();
 if (app.Environment.IsDevelopment())

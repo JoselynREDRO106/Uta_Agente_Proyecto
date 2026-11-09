@@ -1,3 +1,4 @@
+using Uta.Middleware.Application.DTOs.Moodle;
 using Uta.Middleware.Application.Interfaces;
 using Uta.Middleware.Domain.Entities;
 
@@ -11,19 +12,29 @@ public class SincronizarCalificacionesUseCase : ISincronizarCalificacionesUseCas
 {
     private readonly IMoodleHttpClient _moodleHttpClient;
     private readonly IEduMonitorRepository _repository;
+    private readonly IMoodleAcademicSyncClient? _integrationSyncClient;
 
     public SincronizarCalificacionesUseCase(
         IMoodleHttpClient moodleHttpClient,
-        IEduMonitorRepository repository)
+        IEduMonitorRepository repository,
+        IMoodleAcademicSyncClient? integrationSyncClient = null)
     {
         _moodleHttpClient = moodleHttpClient;
         _repository = repository;
+        _integrationSyncClient = integrationSyncClient;
     }
 
     public async Task<IEnumerable<Calificacion>> EjecutarAsync(
         int courseId,
         CancellationToken cancellationToken = default)
     {
+        if (_integrationSyncClient is not null)
+        {
+            var snapshot = await _integrationSyncClient.SynchronizeCourseAndGetSnapshotAsync(
+                courseId, cancellationToken);
+            return MapGrades(courseId, snapshot.Grades);
+        }
+
         var courseTask = _moodleHttpClient.GetCourseAsync(courseId, cancellationToken);
         var usersTask = _moodleHttpClient.GetEnrolledUsersAsync(courseId, cancellationToken);
         await Task.WhenAll(courseTask, usersTask);
@@ -38,10 +49,17 @@ public class SincronizarCalificacionesUseCase : ISincronizarCalificacionesUseCas
                 .Select(user => user.Id),
             cancellationToken);
 
-        // Crear un mapa de ítems para enriquecer las calificaciones
+        await _repository.SaveGradesAsync(course, users, response, cancellationToken);
+        return MapGrades(courseId, response);
+    }
+
+    private static List<Calificacion> MapGrades(
+        int courseId,
+        MoodleGradesResponseDto response)
+    {
         var itemsMap = response.Items.ToDictionary(i => i.Id);
 
-        var calificaciones = response.Grades
+        return response.Grades
             .Select(g =>
             {
                 itemsMap.TryGetValue(g.ItemId, out var item);
@@ -67,9 +85,5 @@ public class SincronizarCalificacionesUseCase : ISincronizarCalificacionesUseCas
                 };
             })
             .ToList();
-
-        await _repository.SaveGradesAsync(course, users, response, cancellationToken);
-
-        return calificaciones;
     }
 }
