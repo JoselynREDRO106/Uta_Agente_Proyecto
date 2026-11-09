@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Uta.Middleware.Application.DTOs;
 using Uta.Middleware.Application.Interfaces;
-using Uta.Middleware.Infrastructure.Data;
+using Uta.Middleware.Application.Security;
 
 namespace Uta.Middleware.WebApi.Controllers;
 
