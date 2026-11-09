@@ -21,10 +21,16 @@ public sealed class GestionarCursosUseCase(
         try
         {
             var usersTask = moodleHttpClient.GetEnrolledUsersAsync(courseId, cancellationToken);
-            var gradesTask = moodleHttpClient.GetGradesByCourseAsync(courseId, cancellationToken);
-            await Task.WhenAll(usersTask, gradesTask);
+            var users = await usersTask;
+            var grades = await moodleHttpClient.GetGradesByCourseAsync(
+                courseId, users
+                    .Where(user => user.Roles.Any(role =>
+                        role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
+                        || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)))
+                    .Select(user => user.Id),
+                cancellationToken);
             await repository.SaveGradesAsync(
-                course, await usersTask, await gradesTask, cancellationToken);
+                course, users, grades, cancellationToken);
             return savedCourse;
         }
         catch (HttpRequestException)

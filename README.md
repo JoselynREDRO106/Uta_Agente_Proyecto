@@ -119,7 +119,7 @@ $env:MoodleSettings__Token = 'PEGA_AQUI_EL_TOKEN_LOCAL'
 dotnet run --project backend/Uta.Middleware.WebApi/Uta.Middleware.WebApi.csproj --launch-profile http
 ```
 
-Las rutas de sincronización consultan Moodle y guardan cursos, matrículas, usuarios, actividades, calificaciones, escalas y mapeos temáticos en SQL Server. El token debe tener acceso a `core_course_get_courses`, `core_enrol_get_enrolled_users`, `core_grades_get_grades` y `core_course_get_contents`.
+Las rutas de sincronización consultan Moodle y guardan cursos, matrículas, usuarios, actividades, calificaciones, escalas y mapeos temáticos en SQL Server. El token debe tener acceso a `core_course_get_courses`, `core_enrol_get_enrolled_users`, `core_course_get_contents` y `gradereport_user_get_grade_items`. Las calificaciones se consultan por usuario matriculado; esta instancia no ofrece `core_grades_get_grades`.
 
 ## Frontend React
 
@@ -153,6 +153,6 @@ Las rutas académicas requieren una sesión válida. El listado de cursos y la v
 
 ## Alcance del Sprint 1
 
-Esta base incluye la solución .NET y la interfaz React, el esquema inicial de SQL Server, y un entorno Moodle de laboratorio con instrucciones para habilitar Web Services y cargar los datos de prueba. El consumo completo con persistencia, el análisis académico y la implementación del agente quedan fuera del Sprint 1.
+Este informe conserva el alcance histórico del Sprint 1. En la rama de avance actual ya se integraron el consumo de Moodle, la persistencia SQL, la consulta de estudiantes y el panel básico de indicadores; la implementación del agente queda para un sprint posterior.
 
 Consulta la [planificación del Sprint 1](docs/Planificacion_Sprint_1.pdf), el [diccionario de datos](docs/diccionario_datos.md) y los [diagramas](docs/diagramas/).

@@ -26,12 +26,17 @@ public class SincronizarCalificacionesUseCase : ISincronizarCalificacionesUseCas
     {
         var courseTask = _moodleHttpClient.GetCourseAsync(courseId, cancellationToken);
         var usersTask = _moodleHttpClient.GetEnrolledUsersAsync(courseId, cancellationToken);
-        var gradesTask = _moodleHttpClient.GetGradesByCourseAsync(courseId, cancellationToken);
-        await Task.WhenAll(courseTask, usersTask, gradesTask);
+        await Task.WhenAll(courseTask, usersTask);
 
         var course = await courseTask;
         var users = await usersTask;
-        var response = await gradesTask;
+        var response = await _moodleHttpClient.GetGradesByCourseAsync(
+            courseId, users
+                .Where(user => user.Roles.Any(role =>
+                    role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
+                    || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)))
+                .Select(user => user.Id),
+            cancellationToken);
 
         // Crear un mapa de ítems para enriquecer las calificaciones
         var itemsMap = response.Items.ToDictionary(i => i.Id);
