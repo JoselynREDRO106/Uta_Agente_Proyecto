@@ -909,6 +909,13 @@ td strong {
   font-size: 10px;
 }
 
+.tracking-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;

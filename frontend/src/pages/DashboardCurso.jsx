@@ -200,7 +200,7 @@ function DashboardCurso() {
               {studentsLoading && <tr><td colSpan="3">Cargando información…</td></tr>}
               {!studentsLoading && students?.items?.map((student) => (
                 <tr key={student.moodleId}>
-                  <td><span className="student-cell"><span className="student-avatar">{student.nombre.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span><span><strong>{student.nombre}</strong><small>{student.email || 'Correo no disponible'}</small></span></span></td>
+                  <td><span className="student-cell"><span className="student-avatar">{student.nombre.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span><span><strong><Link to={`/cursos/${id}/estudiantes/${student.moodleId}`}>{student.nombre}</Link></strong><small>{student.email || 'Correo no disponible'}</small></span></span></td>
                   <td>{student.promedio == null ? 'Sin datos' : `${Number(student.promedio).toFixed(2)} / 100`}</td>
                   <td><span className={`status-pill status-pill--${statusTone(student.estado)}`}>{statusLabel(student.estado)}</span></td>
                 </tr>

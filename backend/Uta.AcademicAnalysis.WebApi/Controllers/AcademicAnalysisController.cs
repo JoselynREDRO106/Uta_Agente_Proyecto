@@ -103,6 +103,79 @@ public sealed class AcademicAnalysisController(AnalysisDbContext dbContext) : Co
         return Ok(BuildIndicators(snapshot, period));
     }
 
+    [HttpGet("courses/{courseId:int}/students/{studentId:int}/tracking")]
+    public async Task<ActionResult<SeguimientoEstudianteDto>> GetStudentTracking(
+        int courseId,
+        int studentId,
+        CancellationToken cancellationToken)
+    {
+        if (!CanAccessCourse(courseId))
+        {
+            return Forbid();
+        }
+
+        var snapshot = await GetSnapshotAsync(courseId, cancellationToken);
+        var student = snapshot?.EnrolledUsers.FirstOrDefault(user =>
+            user.Id == studentId
+            && user.Roles.Any(role =>
+                role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
+                || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)));
+        if (snapshot is null || student is null)
+        {
+            return NotFound();
+        }
+
+        var items = snapshot.Grades.Items
+            .Where(item => item.GradeMax > 0
+                && !item.ItemType.Equals("course", StringComparison.OrdinalIgnoreCase)
+                && !item.ItemType.Equals("category", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        var gradesByItem = snapshot.Grades.Grades
+            .Where(grade => grade.UserId == studentId)
+            .GroupBy(grade => grade.ItemId)
+            .ToDictionary(group => group.Key, group => group.First());
+
+        var notes = new List<SeguimientoNotaDto>();
+        var activities = new List<SeguimientoActividadDto>();
+        foreach (var item in items)
+        {
+            gradesByItem.TryGetValue(item.Id, out var grade);
+            decimal? value = grade is not null
+                && decimal.TryParse(
+                    grade.Grade,
+                    System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var parsed)
+                    ? parsed
+                    : null;
+            notes.Add(new SeguimientoNotaDto(
+                item.Id,
+                item.ItemName,
+                grade is null ? null : ParseUnixDate(grade.DateGraded) ?? ParseUnixDate(grade.DateSubmitted),
+                value,
+                item.GradeMin,
+                item.GradeMax));
+            activities.Add(new SeguimientoActividadDto(
+                item.Id,
+                item.ItemName,
+                grade is null ? "NoDisponible" : ClassifyActivity(grade, value.HasValue)));
+        }
+
+        return Ok(new SeguimientoEstudianteDto(
+            courseId,
+            studentId,
+            student.FullName,
+            "Moodle",
+            snapshot.UpdatedAtUtc,
+            snapshot.SyncStatus,
+            notes
+                .OrderBy(note => note.FechaUtc is null)
+                .ThenBy(note => note.FechaUtc)
+                .ThenBy(note => note.Item, StringComparer.CurrentCulture)
+                .ToArray(),
+            activities));
+    }
+
     [HttpGet("courses/{courseId:int}/period")]
     public async Task<ActionResult<AcademicPeriodDto>> GetPeriod(
         int courseId,
@@ -598,6 +671,23 @@ public sealed class AcademicAnalysisController(AnalysisDbContext dbContext) : Co
         return long.TryParse(grade.DateSubmitted, out var submittedAt) && submittedAt > 0
             ? "pendiente"
             : "sin_entrega";
+    }
+
+    private static DateTime? ParseUnixDate(string value) =>
+        long.TryParse(value, out var timestamp) && timestamp > 0
+            ? DateTimeOffset.FromUnixTimeSeconds(timestamp).UtcDateTime
+            : null;
+
+    private static string ClassifyActivity(MoodleUserGradeDto grade, bool hasNumericGrade)
+    {
+        if (hasNumericGrade)
+        {
+            return "Completada";
+        }
+
+        return long.TryParse(grade.DateSubmitted, out var submittedAt) && submittedAt > 0
+            ? "PendienteCalificar"
+            : "SinEntrega";
     }
 
     private bool CanAccessCourse(int courseId) =>

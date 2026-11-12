@@ -22,6 +22,12 @@ public interface IAnalysisQueryClient
         string? bearerToken,
         CancellationToken cancellationToken = default);
 
+    Task<SeguimientoEstudianteDto?> GetStudentTrackingAsync(
+        int courseId,
+        int studentId,
+        string? bearerToken,
+        CancellationToken cancellationToken = default);
+
     Task<AnalisisGrupalDto> GetGroupAnalysisAsync(
         int courseId,
         decimal threshold,

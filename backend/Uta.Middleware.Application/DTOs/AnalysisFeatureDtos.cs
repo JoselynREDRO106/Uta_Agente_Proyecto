@@ -94,3 +94,26 @@ public sealed record RespuestaAsistenteCursoDto(
 public sealed record SolicitudRecomendacionesGatewayDto(
     decimal Umbral = 6m,
     int MinimoCalificaciones = 7);
+
+public sealed record SeguimientoNotaDto(
+    int ItemId,
+    string Item,
+    DateTime? FechaUtc,
+    decimal? Nota,
+    decimal EscalaMinima,
+    decimal EscalaMaxima);
+
+public sealed record SeguimientoActividadDto(
+    int ItemId,
+    string Actividad,
+    string Estado);
+
+public sealed record SeguimientoEstudianteDto(
+    int CursoId,
+    int EstudianteId,
+    string Nombre,
+    string Fuente,
+    DateTime UltimaSincronizacionUtc,
+    string EstadoSincronizacion,
+    IReadOnlyCollection<SeguimientoNotaDto> Notas,
+    IReadOnlyCollection<SeguimientoActividadDto> Actividades);
