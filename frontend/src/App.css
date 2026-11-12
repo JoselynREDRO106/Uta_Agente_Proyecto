@@ -265,6 +265,12 @@
   margin-bottom: 26px;
 }
 
+.page-heading__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .page-heading h1,
 .login-message h1 {
   margin: 7px 0 6px;
@@ -659,6 +665,176 @@ td strong {
   font-size: 10px;
 }
 
+.feature-panel {
+  margin-bottom: 20px;
+}
+
+.feature-message,
+.feature-meta {
+  margin: 0;
+  padding: 0 22px 18px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.feature-meta {
+  padding-bottom: 12px;
+}
+
+.trend-list {
+  padding: 16px 22px 20px;
+  border-top: 1px solid #f0f2f7;
+}
+
+.trend-list h3,
+.feature-answer h3 {
+  margin: 0 0 10px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.trend-list p,
+.feature-answer p {
+  color: #526078;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.feature-form {
+  display: grid;
+  gap: 9px;
+  padding: 0 22px 20px;
+}
+
+.feature-form label,
+.recommendation-actions label {
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.feature-form textarea,
+.recommendation-actions input,
+.audit-filters input,
+.audit-filters select {
+  min-height: 38px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+}
+
+.feature-form textarea {
+  resize: vertical;
+}
+
+.feature-form textarea:focus,
+.recommendation-actions input:focus,
+.audit-filters input:focus,
+.audit-filters select:focus {
+  border-color: #8293ee;
+  outline: 3px solid #e9edff;
+}
+
+.feature-form__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.feature-form__footer .muted {
+  margin: 0;
+  font-size: 10px;
+}
+
+.feature-answer {
+  padding: 18px 22px;
+  border-top: 1px solid #f0f2f7;
+}
+
+.feature-answer h4 {
+  margin-bottom: 5px;
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.feature-answer ul {
+  padding-left: 18px;
+  color: #526078;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.recommendation-item {
+  margin: 0 22px 14px;
+  border: 1px solid #edf0f5;
+  border-radius: 9px;
+}
+
+.recommendation-item .card-heading {
+  align-items: flex-start;
+  padding: 16px;
+}
+
+.recommendation-item h3 {
+  margin: 0 0 7px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.recommendation-item p {
+  margin: 4px 0;
+  color: #526078;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.recommendation-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.recommendation-actions label {
+  display: grid;
+  min-width: min(250px, 100%);
+  flex: 1;
+  gap: 6px;
+}
+
+.audit-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  padding: 18px 22px;
+}
+
+.audit-filters label {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.audit-filters select,
+.audit-filters input {
+  min-height: 38px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.audit-filters select {
+  min-width: 180px;
+}
+
+.audit-filters input {
+  max-width: 160px;
+}
+
 .back-link {
   display: block;
   margin-bottom: 20px;
@@ -737,6 +913,13 @@ td strong {
   height: 33px;
   flex-basis: 33px;
   font-size: 10px;
+}
+
+.tracking-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .status-pill {
@@ -1073,6 +1256,27 @@ td strong {
 
   .card-heading {
     padding: 14px;
+  }
+
+  .feature-form__footer,
+  .pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .feature-form__footer .button {
+    width: 100%;
+  }
+
+  .audit-filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .audit-filters select,
+  .audit-filters input {
+    max-width: none;
+    width: 100%;
   }
 
   th,

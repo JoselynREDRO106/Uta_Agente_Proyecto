@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import CourseAssistantPanel from '../components/CourseAssistantPanel.jsx'
+import GroupAnalysisPanel from '../components/GroupAnalysisPanel.jsx'
 import MetricCard from '../components/MetricCard.jsx'
+import RecommendationsPanel from '../components/RecommendationsPanel.jsx'
 import { getCourseIndicators, getCourseStudents, getCourses } from '../services/api.js'
 
 const pageSize = 10
@@ -106,6 +109,10 @@ function DashboardCurso() {
           <h1>{course?.name ?? (courseLoading ? 'Cargando curso…' : 'Curso')}</h1>
           <p className="muted">Fuente: Moodle · Última sincronización: {lastSync}</p>
         </div>
+        <div className="page-heading__actions">
+          <Link className="button button--secondary" to={`/cursos/${id}/alertas`}>Ver alertas</Link>
+          <Link className="button button--secondary" to={`/cursos/${id}/informes`}>Informes</Link>
+        </div>
       </div>
 
       {error && <p className="course-message course-message--error" role="alert">{error}</p>}
@@ -141,6 +148,10 @@ function DashboardCurso() {
           La última sincronización quedó incompleta. Algunos indicadores pueden no estar disponibles.
         </p>
       )}
+
+      <GroupAnalysisPanel courseId={id} />
+      <CourseAssistantPanel courseId={id} />
+      <RecommendationsPanel courseId={id} />
 
       <section className="content-card indicator-distribution">
         <div className="card-heading">
@@ -193,7 +204,7 @@ function DashboardCurso() {
               {studentsLoading && <tr><td colSpan="3">Cargando información…</td></tr>}
               {!studentsLoading && students?.items?.map((student) => (
                 <tr key={student.moodleId}>
-                  <td><span className="student-cell"><span className="student-avatar">{student.nombre.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span><span><strong>{student.nombre}</strong><small>{student.email || 'Correo no disponible'}</small></span></span></td>
+                  <td><span className="student-cell"><span className="student-avatar">{student.nombre.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span><span><strong><Link to={`/cursos/${id}/estudiantes/${student.moodleId}`}>{student.nombre}</Link></strong><small>{student.email || 'Correo no disponible'}</small></span></span></td>
                   <td>{student.promedio == null ? 'Sin datos' : `${Number(student.promedio).toFixed(2)} / 100`}</td>
                   <td><span className={`status-pill status-pill--${statusTone(student.estado)}`}>{statusLabel(student.estado)}</span></td>
                 </tr>

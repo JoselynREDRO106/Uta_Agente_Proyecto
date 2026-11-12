@@ -12,10 +12,11 @@ namespace Uta.Middleware.WebApi.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/cursos")]
-public sealed class CursosController(
+public sealed partial class CursosController(
     IGestionarCursosUseCase gestionarCursos,
     IEduMonitorRepository repository,
     ILogger<CursosController> logger,
+    IAuditLogRepository auditLog,
     IAnalysisQueryClient? analysisQueries = null,
     IMoodleAcademicSyncClient? integrationSync = null) : ControllerBase
 {
@@ -149,6 +150,48 @@ public sealed class CursosController(
             courseId, search, status?.Trim().ToLowerInvariant(), page, pageSize, cancellationToken));
     }
 
+    [HttpGet("{courseId:int}/estudiantes/{studentId:int}/seguimiento")]
+    [ProducesResponseType(typeof(SeguimientoEstudianteDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SeguimientoEstudianteDto>> ObtenerSeguimientoEstudiante(
+        int courseId,
+        int studentId,
+        CancellationToken cancellationToken)
+    {
+        if (courseId <= 0 || studentId <= 0)
+        {
+            return BadRequest("El curso y el estudiante deben ser identificadores positivos.");
+        }
+
+        if (!await CanAccessCourseAsync(courseId, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        if (analysisQueries is null)
+        {
+            return Problem(
+                title: "El servicio de Análisis no está configurado.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        try
+        {
+            var tracking = await analysisQueries.GetStudentTrackingAsync(
+                courseId, studentId, GetBearerToken(), cancellationToken);
+            return tracking is null ? NotFound() : Ok(tracking);
+        }
+        catch (HttpRequestException exception)
+        {
+            return DownstreamFailure("Análisis", exception);
+        }
+        catch (JsonException exception)
+        {
+            return DownstreamInvalidResponse("Análisis", exception);
+        }
+    }
+
     [HttpGet("{courseId:int}/indicadores")]
     [ProducesResponseType(typeof(IndicadoresCursoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -187,6 +230,202 @@ public sealed class CursosController(
         return indicators is null ? NotFound() : Ok(indicators);
     }
 
+    [HttpGet("{courseId:int}/analisis-grupal")]
+    [Authorize(Roles = "Docente,Administrador técnico")]
+    public async Task<ActionResult<AnalisisGrupalDto>> ObtenerAnalisisGrupal(
+        int courseId,
+        [FromQuery] decimal umbral = 6m,
+        [FromQuery] int minimoCalificaciones = 7,
+        CancellationToken cancellationToken = default)
+    {
+        if (courseId <= 0 || umbral is <= 0 or > 10
+            || minimoCalificaciones is < 1 or > 1000)
+        {
+            return BadRequest("Indique un curso válido, un umbral entre 0 y 10 y un mínimo entre 1 y 1000.");
+        }
+
+        if (!await CanAccessCourseAsync(courseId, cancellationToken))
+        {
+            await RecordAuditAsync(
+                "AnalisisGrupal", courseId, "Denegado", "Acceso al curso denegado.", cancellationToken);
+            return Forbid();
+        }
+
+        if (analysisQueries is null)
+        {
+            return Problem(
+                title: "El servicio de Análisis no está configurado.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        try
+        {
+            var analysis = await analysisQueries.GetGroupAnalysisAsync(
+                courseId, umbral, minimoCalificaciones, GetBearerToken(), cancellationToken);
+            await RecordAuditAsync(
+                "AnalisisGrupal", courseId, "Exito", "Consulta de resultados agregados.", cancellationToken);
+            return Ok(analysis);
+        }
+        catch (HttpRequestException exception)
+        {
+            await RecordAuditAsync(
+                "AnalisisGrupal", courseId, "Error", "El servicio de Análisis no completó la consulta.", cancellationToken);
+            return DownstreamFailure("Análisis", exception);
+        }
+        catch (JsonException exception)
+        {
+            logger.LogError(exception, "Análisis devolvió un resultado inválido para el curso {CourseId}.", courseId);
+            await RecordAuditAsync(
+                "AnalisisGrupal", courseId, "Error", "El servicio de Análisis devolvió datos inválidos.", cancellationToken);
+            return DownstreamInvalidResponse("Análisis", exception);
+        }
+    }
+
+    [HttpGet("{courseId:int}/recomendaciones")]
+    [Authorize(Roles = "Docente,Administrador técnico")]
+    public async Task<ActionResult<IReadOnlyCollection<RecomendacionDto>>> ObtenerRecomendaciones(
+        int courseId,
+        CancellationToken cancellationToken)
+    {
+        if (courseId <= 0)
+        {
+            return BadRequest("El curso debe ser positivo.");
+        }
+
+        if (!await CanAccessCourseAsync(courseId, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        if (analysisQueries is null)
+        {
+            return Problem(
+                title: "El servicio de Análisis no está configurado.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        try
+        {
+            return Ok(await analysisQueries.GetRecommendationsAsync(
+                courseId, GetBearerToken(), cancellationToken));
+        }
+        catch (HttpRequestException exception)
+        {
+            return DownstreamFailure("Análisis", exception);
+        }
+        catch (JsonException exception)
+        {
+            return DownstreamInvalidResponse("Análisis", exception);
+        }
+    }
+
+    [HttpPost("{courseId:int}/recomendaciones/generar")]
+    [Authorize(Roles = "Docente,Administrador técnico")]
+    public async Task<ActionResult<ResultadoGenerarRecomendacionesDto>> GenerarRecomendaciones(
+        int courseId,
+        SolicitudRecomendacionesGatewayDto request,
+        CancellationToken cancellationToken)
+    {
+        if (courseId <= 0 || request.Umbral is <= 0 or > 10
+            || request.MinimoCalificaciones is < 1 or > 1000)
+        {
+            return BadRequest("Indique un curso válido, un umbral entre 0 y 10 y un mínimo entre 1 y 1000.");
+        }
+
+        if (!await CanAccessCourseAsync(courseId, cancellationToken))
+        {
+            await RecordAuditAsync(
+                "RecomendacionGenerada", courseId, "Denegado", "Acceso al curso denegado.", cancellationToken);
+            return Forbid();
+        }
+
+        if (analysisQueries is null)
+        {
+            return Problem(
+                title: "El servicio de Análisis no está configurado.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        try
+        {
+            var result = await analysisQueries.GenerateRecommendationsAsync(
+                courseId, request, GetBearerToken(), cancellationToken);
+            await RecordAuditAsync(
+                "RecomendacionGenerada",
+                courseId,
+                "Exito",
+                $"Propuestas generadas: {result.Creadas}.",
+                cancellationToken);
+            return Ok(result);
+        }
+        catch (HttpRequestException exception)
+        {
+            await RecordAuditAsync(
+                "RecomendacionGenerada", courseId, "Error", "No se pudieron generar propuestas.", cancellationToken);
+            return DownstreamFailure("Análisis", exception);
+        }
+        catch (JsonException exception)
+        {
+            await RecordAuditAsync(
+                "RecomendacionGenerada", courseId, "Error", "Análisis devolvió datos inválidos.", cancellationToken);
+            return DownstreamInvalidResponse("Análisis", exception);
+        }
+    }
+
+    [HttpPatch("{courseId:int}/recomendaciones/{recommendationId:guid}/estado")]
+    [Authorize(Roles = "Docente,Administrador técnico")]
+    public async Task<ActionResult<RecomendacionDto>> ActualizarEstadoRecomendacion(
+        int courseId,
+        Guid recommendationId,
+        ActualizarEstadoRecomendacionDto request,
+        CancellationToken cancellationToken)
+    {
+        if (courseId <= 0)
+        {
+            return BadRequest("El curso debe ser positivo.");
+        }
+
+        if (!await CanAccessCourseAsync(courseId, cancellationToken))
+        {
+            await RecordAuditAsync(
+                "EstadoRecomendacionActualizado", courseId, "Denegado", "Acceso al curso denegado.", cancellationToken);
+            return Forbid();
+        }
+
+        if (analysisQueries is null)
+        {
+            return Problem(
+                title: "El servicio de Análisis no está configurado.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        try
+        {
+            var recommendation = await analysisQueries.UpdateRecommendationAsync(
+                courseId, recommendationId, request, GetBearerToken(), cancellationToken);
+            if (recommendation is null)
+            {
+                return NotFound();
+            }
+
+            await RecordAuditAsync(
+                "EstadoRecomendacionActualizado",
+                courseId,
+                "Exito",
+                $"Estado actualizado a {recommendation.Estado}.",
+                cancellationToken);
+            return Ok(recommendation);
+        }
+        catch (HttpRequestException exception)
+        {
+            return DownstreamFailure("Análisis", exception);
+        }
+        catch (JsonException exception)
+        {
+            return DownstreamInvalidResponse("Análisis", exception);
+        }
+    }
+
     /// <summary>Obtiene un curso de Moodle y lo guarda o actualiza en EduMonitor.</summary>
     /// <param name="courseId">ID del curso en Moodle.</param>
     [HttpPost("sincronizar/{courseId:int}")]
@@ -206,11 +445,15 @@ public sealed class CursosController(
         try
         {
             var course = await gestionarCursos.SincronizarAsync(courseId, cancellationToken);
+            await RecordAuditAsync(
+                "Sincronizacion", courseId, "Exito", "Sincronización Moodle solicitada por el administrador.", cancellationToken);
             return Ok(new CursoResponse(course.MoodleId, course.Name));
         }
         catch (HttpRequestException exception)
         {
             logger.LogError(exception, "No se pudo obtener el curso {CourseId} desde Moodle.", courseId);
+            await RecordAuditAsync(
+                "Sincronizacion", courseId, "Error", "Falló la comunicación con Moodle durante la sincronización.", cancellationToken);
             return Problem(
                 title: "No se pudo sincronizar el curso desde Moodle.",
                 statusCode: StatusCodes.Status502BadGateway);
@@ -218,6 +461,8 @@ public sealed class CursosController(
         catch (JsonException exception)
         {
             logger.LogError(exception, "Moodle devolvió una respuesta inválida para el curso {CourseId}.", courseId);
+            await RecordAuditAsync(
+                "Sincronizacion", courseId, "Error", "Moodle devolvió datos inválidos durante la sincronización.", cancellationToken);
             return Problem(
                 title: "Moodle devolvió una respuesta inválida.",
                 statusCode: StatusCodes.Status502BadGateway);
@@ -257,6 +502,22 @@ public sealed class CursosController(
             ? authorization["Bearer ".Length..].Trim()
             : null;
     }
+
+    private Task RecordAuditAsync(
+        string eventType,
+        int? courseId,
+        string result,
+        string detail,
+        CancellationToken cancellationToken) =>
+        auditLog.RecordAsync(
+            User.FindFirstValue(ClaimTypes.NameIdentifier),
+            User.Identity?.Name ?? "Usuario",
+            User.FindFirstValue(ClaimTypes.Role) ?? "Desconocido",
+            eventType,
+            courseId,
+            result,
+            detail,
+            cancellationToken);
 
     private ObjectResult DownstreamFailure(string service, HttpRequestException exception)
     {

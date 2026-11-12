@@ -16,8 +16,8 @@ backend/       Solución .NET: API, aplicación, dominio e infraestructura
 frontend/      Interfaz React + Vite
 database/      Scripts de SQL Server (entrega del responsable DBA)
 infra/         Entorno Moodle (entrega del responsable DevOps/Moodle)
-agent/         Esqueleto documental del agente, cuya implementación queda para un sprint posterior
-docs/          Planificación, diagramas y mockups
+agent/         Servicio local del agente FastAPI/LangGraph y sus pruebas
+docs/          Planificación, diagramas, mockups y modelos del Sprint 2
 docker-compose.yml
 .env.example
 ```
@@ -188,6 +188,27 @@ Inicia `Uta.AcademicAnalysis.WebApi` en `localhost:5030` y configura en los proc
 
 Si RabbitMQ no está configurado, la sincronización todavía guarda datos en Integración y el evento permanece en el outbox, pero la proyección de Análisis no se actualiza. Una sesión JWT válida permite consultas durante una caída de Identidad; no permite iniciar nuevas sesiones mientras Identidad esté fuera de servicio.
 
+### Análisis grupal, agente y recomendaciones (Sprint 2)
+
+Aplica `database\007_sprint2_audit.sql` y `database\008_analysis_recommendations.sql` después de crear las bases. El dashboard del curso usa estas rutas protegidas por JWT y autorización del curso:
+
+- `GET /api/cursos/{cursoId}/estudiantes/{estudianteId}/seguimiento` (seguimiento individual: notas con escala y estado de actividades)
+- `GET /api/cursos/{cursoId}/analisis-grupal?umbral=6&minimoCalificaciones=7`
+- `POST /api/cursos/{cursoId}/consultar`
+- `GET /api/cursos/{cursoId}/recomendaciones`
+- `POST /api/cursos/{cursoId}/recomendaciones/generar`
+- `PATCH /api/cursos/{cursoId}/recomendaciones/{id}/estado`
+- `GET /api/auditoria` (solo Administrador técnico, con filtros y paginación)
+
+El análisis normaliza las notas a escala 0–10; no aplica el umbral cuando hay menos de siete calificaciones. Para ejecutar agente y Ollama en Docker, genera un secreto para `ACADEMIC_AGENT_API_KEY` en `.env`, luego inicia ambos servicios:
+
+```powershell
+docker compose --profile ai up -d --build ollama academic-agent
+docker compose exec ollama ollama pull llama3.2
+```
+
+Configura Middleware con `AcademicAgent__BaseUrl=http://localhost:8010` y la misma `AcademicAgent__ApiKey` definida en `.env`. El agente envía únicamente la pregunta al modelo local para clasificar la intención; construye la respuesta con indicadores agregados obtenidos por la API .NET. No envía nombres, correos ni calificaciones individuales.
+
 ## Frontend React
 
 En una terminal nueva:
@@ -206,7 +227,7 @@ Rutas de la aplicación:
 - `/login`
 - `/cursos`
 - `/cursos/:id`
-- `/estudiantes/:id` (el seguimiento individual detallado permanece fuera del Sprint 1)
+- `/cursos/:courseId/estudiantes/:studentId` (seguimiento individual, HU-08)
 
 Las rutas académicas requieren una sesión válida. El listado de cursos y la vista de curso consultan la API; el dashboard presenta indicadores normalizados a escala 0–100 y estados de matrícula. No se asigna cero a una calificación ausente.
 

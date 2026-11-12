@@ -73,6 +73,168 @@ public sealed class AnalysisHttpClient(
                ?? throw new JsonException("El servicio de Análisis devolvió indicadores vacíos.");
     }
 
+    public async Task<SeguimientoEstudianteDto?> GetStudentTrackingAsync(
+        int courseId,
+        int studentId,
+        string? bearerToken,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            _baseUrl + $"/api/analysis/courses/{courseId}/students/{studentId}/tracking");
+        AddBearerToken(request, bearerToken);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<SeguimientoEstudianteDto>(
+                   JsonOptions, cancellationToken)
+               ?? throw new JsonException("El servicio de Análisis devolvió un seguimiento vacío.");
+    }
+
+    public Task<AnalisisGrupalDto> GetGroupAnalysisAsync(
+        int courseId,
+        decimal threshold,
+        int minimumGrades,
+        string? bearerToken,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<AnalisisGrupalDto>(
+            HttpMethod.Get,
+            $"/api/analysis/courses/{courseId}/group-analysis?threshold={threshold.ToString(System.Globalization.CultureInfo.InvariantCulture)}&minimumGrades={minimumGrades}",
+            null,
+            bearerToken,
+            cancellationToken);
+
+    public Task<IReadOnlyCollection<RecomendacionDto>> GetRecommendationsAsync(
+        int courseId,
+        string? bearerToken,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<IReadOnlyCollection<RecomendacionDto>>(
+            HttpMethod.Get,
+            $"/api/analysis/courses/{courseId}/recommendations",
+            null,
+            bearerToken,
+            cancellationToken);
+
+    public Task<ResultadoGenerarRecomendacionesDto> GenerateRecommendationsAsync(
+        int courseId,
+        SolicitudRecomendacionesGatewayDto requestBody,
+        string? bearerToken,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<ResultadoGenerarRecomendacionesDto>(
+            HttpMethod.Post,
+            $"/api/analysis/courses/{courseId}/recommendations/generate",
+            new SolicitudGenerarRecomendacionesDto(
+                requestBody.Umbral, requestBody.MinimoCalificaciones),
+            bearerToken,
+            cancellationToken);
+
+    public async Task<RecomendacionDto?> UpdateRecommendationAsync(
+        int courseId,
+        Guid recommendationId,
+        ActualizarEstadoRecomendacionDto requestBody,
+        string? bearerToken,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            _baseUrl + $"/api/analysis/courses/{courseId}/recommendations/{recommendationId}/status")
+        {
+            Content = JsonContent.Create(requestBody, options: JsonOptions)
+        };
+        AddBearerToken(request, bearerToken);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<RecomendacionDto>(
+                   JsonOptions, cancellationToken)
+               ?? throw new JsonException("El servicio de Análisis devolvió una recomendación vacía.");
+    }
+
+    public Task<IReadOnlyCollection<ReglaAlertaDto>> GetAlertRulesAsync(
+        int courseId,
+        string? bearerToken,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<IReadOnlyCollection<ReglaAlertaDto>>(
+            HttpMethod.Get,
+            $"/api/analysis/courses/{courseId}/alerts/rules",
+            null,
+            bearerToken,
+            cancellationToken);
+
+    public Task<IReadOnlyCollection<ReglaAlertaDto>> SaveAlertRulesAsync(
+        int courseId,
+        GuardarReglasAlertaDto requestBody,
+        string? bearerToken,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<IReadOnlyCollection<ReglaAlertaDto>>(
+            HttpMethod.Put,
+            $"/api/analysis/courses/{courseId}/alerts/rules",
+            requestBody,
+            bearerToken,
+            cancellationToken);
+
+    public async Task<PanelAlertasDto?> GetAlertsAsync(
+        int courseId,
+        string? status,
+        string? bearerToken,
+        CancellationToken cancellationToken = default)
+    {
+        var query = string.IsNullOrWhiteSpace(status)
+            ? string.Empty
+            : $"?status={Uri.EscapeDataString(status.Trim())}";
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get, _baseUrl + $"/api/analysis/courses/{courseId}/alerts{query}");
+        AddBearerToken(request, bearerToken);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<PanelAlertasDto>(JsonOptions, cancellationToken)
+               ?? throw new JsonException("El servicio de Análisis devolvió un panel de alertas vacío.");
+    }
+
+    public async Task<ActualizarEstadoAlertaDto?> UpdateAlertStateAsync(
+        int courseId,
+        int studentId,
+        string alertType,
+        ActualizarEstadoAlertaDto requestBody,
+        string? bearerToken,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            _baseUrl + $"/api/analysis/courses/{courseId}/alerts/{studentId}/{Uri.EscapeDataString(alertType)}/state")
+        {
+            Content = JsonContent.Create(requestBody, options: JsonOptions)
+        };
+        AddBearerToken(request, bearerToken);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<ActualizarEstadoAlertaDto>(
+                   JsonOptions, cancellationToken)
+               ?? throw new JsonException("El servicio de Análisis devolvió un estado de alerta vacío.");
+    }
+
     private async Task<T> SendAsync<T>(
         HttpMethod method,
         string path,
