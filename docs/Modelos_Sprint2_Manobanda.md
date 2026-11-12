@@ -6,14 +6,18 @@
 
 Los diagramas describen el modelo que quedó en el repositorio. Las tablas nuevas del Sprint 2 viven en `EduMonitorAnalysis`, salvo `AUDIT_LOG`, que vive en `EduMonitor`. El vínculo con `CURSO` y `ACTIVIDAD` es lógico por `id_moodle` / `id_moodle_curso`: no hay clave foránea entre bases de datos.
 
-Hay cuatro diagramas distintos:
+Hay cuatro diagramas distintos, en este orden:
 
-- `docs/diagramas/modelo-er.png`: modelo núcleo del Sprint 1.
-- `docs/diagramas/modelo-er-sprint2.png`: entidad-relación ampliado, con alertas, informe, recomendaciones y auditoría.
-- `docs/diagramas/arquitectura.png`: arquitectura general, con los paquetes de sistema externo, backend y frontend.
-- `docs/diagramas/arquitectura-sprint2.png`: arquitectura de componentes del Sprint 2. Es la figura de esta sección.
+1. `docs/diagramas/arquitectura.png`: arquitectura general. Va primero.
+2. `docs/diagramas/arquitectura-sprint2.png`: arquitectura de componentes.
+3. `docs/diagramas/modelo-er.png`: modelo núcleo del Sprint 1.
+4. `docs/diagramas/modelo-er-sprint2.png`: entidad-relación ampliado, con alertas, informe, recomendaciones y auditoría.
 
 ## TE-01 — Modelo de datos y arquitectura ampliados
+
+### Arquitectura general
+
+![Arquitectura general EduMonitor](diagramas/arquitectura.png)
 
 ### Arquitectura de componentes
 
@@ -21,11 +25,15 @@ Hay cuatro diagramas distintos:
 
 El docente no habla con Análisis ni con el agente de forma directa. Middleware valida el curso del JWT y reenvía la consulta. El agente no abre SQL Server: redacta con los indicadores y el análisis grupal que Middleware ya obtuvo. Ollama permanece en la red local del proyecto.
 
+### Modelo núcleo
+
+![Modelo de datos núcleo EduMonitor](diagramas/modelo-er.png)
+
 ### Modelo entidad-relación ampliado
 
 `COURSE_PROJECTION` guarda el snapshot sincronizado. De ese snapshot se calculan el seguimiento individual y las alertas. `ALERT_RULE` y `ALERT_STATE` guardan la configuración y el estado pedagógico. `ACADEMIC_REPORT` y `ACADEMIC_RECOMMENDATION` guardan el informe y las propuestas. La evidencia de una alerta no es una tabla: se arma al consultar el snapshot.
 
-![Modelo entidad-relación EduMonitor](diagramas/modelo-er-sprint2.png)
+![Modelo entidad-relación ampliado EduMonitor](diagramas/modelo-er-sprint2.png)
 
 Esas dos figuras salen de PlantUML. Los diagramas de clases y de secuencia de cada tarea siguen en este documento.
 
