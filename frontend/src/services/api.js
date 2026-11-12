@@ -157,6 +157,34 @@ export async function updateRecommendation(courseId, recommendationId, estado, t
   )
 }
 
+export async function getAlertRules(courseId) {
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/alertas/reglas`)
+}
+
+export async function saveAlertRules(courseId, reglas) {
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/alertas/reglas`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reglas }),
+  })
+}
+
+export async function getCourseAlerts(courseId, estado = '') {
+  const query = estado ? `?estado=${encodeURIComponent(estado)}` : ''
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/alertas${query}`)
+}
+
+export async function updateAlertState(courseId, studentId, tipo, estado) {
+  return requestJson(
+    `/api/cursos/${encodeURIComponent(courseId)}/alertas/${encodeURIComponent(studentId)}/${encodeURIComponent(tipo)}/estado`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado }),
+    },
+  )
+}
+
 export async function getAuditLogs({
   tipo = '',
   desdeUtc = '',

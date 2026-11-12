@@ -52,4 +52,29 @@ public interface IAnalysisQueryClient
         ActualizarEstadoRecomendacionDto request,
         string? bearerToken,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<ReglaAlertaDto>> GetAlertRulesAsync(
+        int courseId,
+        string? bearerToken,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<ReglaAlertaDto>> SaveAlertRulesAsync(
+        int courseId,
+        GuardarReglasAlertaDto request,
+        string? bearerToken,
+        CancellationToken cancellationToken = default);
+
+    Task<PanelAlertasDto?> GetAlertsAsync(
+        int courseId,
+        string? status,
+        string? bearerToken,
+        CancellationToken cancellationToken = default);
+
+    Task<ActualizarEstadoAlertaDto?> UpdateAlertStateAsync(
+        int courseId,
+        int studentId,
+        string alertType,
+        ActualizarEstadoAlertaDto request,
+        string? bearerToken,
+        CancellationToken cancellationToken = default);
 }

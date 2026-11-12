@@ -13,7 +13,7 @@ namespace Uta.AcademicAnalysis.WebApi.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/analysis")]
-public sealed class AcademicAnalysisController(AnalysisDbContext dbContext) : ControllerBase
+public sealed partial class AcademicAnalysisController(AnalysisDbContext dbContext) : ControllerBase
 {
     private static readonly JsonSerializerOptions SnapshotJsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeZoneInfo EcuadorTimeZone =

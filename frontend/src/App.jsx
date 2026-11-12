@@ -4,6 +4,8 @@ import Login from './pages/Login.jsx'
 import Cursos from './pages/Cursos.jsx'
 import DashboardCurso from './pages/DashboardCurso.jsx'
 import FichaEstudiante from './pages/FichaEstudiante.jsx'
+import AlertasCurso from './pages/AlertasCurso.jsx'
+import ReglasAlerta from './pages/ReglasAlerta.jsx'
 import HistorialSincronizaciones from './pages/HistorialSincronizaciones.jsx'
 import Auditoria from './pages/Auditoria.jsx'
 import { getCurrentUser, hasSession } from './services/api.js'
@@ -30,6 +32,8 @@ function App() {
           <Route element={<AppLayout />}>
             <Route path="/cursos" element={<Cursos />} />
             <Route path="/cursos/:id" element={<DashboardCurso />} />
+            <Route path="/cursos/:id/alertas" element={<AlertasCurso />} />
+            <Route path="/cursos/:id/alertas/reglas" element={<ReglasAlerta />} />
             <Route path="/cursos/:courseId/estudiantes/:studentId" element={<FichaEstudiante />} />
             <Route element={<RequireAdministrator />}>
               <Route path="/admin/moodle" element={<ConfiguracionMoodle />} />
