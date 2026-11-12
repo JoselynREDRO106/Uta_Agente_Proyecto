@@ -109,6 +109,10 @@ public static class InfrastructureServiceExtensions
             {
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
+            services.AddHttpClient<IAnalysisReportClient, AnalysisReportHttpClient>((sp, client) =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
         }
 
         // Registrar casos de uso

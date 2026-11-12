@@ -265,6 +265,12 @@
   margin-bottom: 26px;
 }
 
+.page-heading__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .page-heading h1,
 .login-message h1 {
   margin: 7px 0 6px;

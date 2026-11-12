@@ -109,7 +109,10 @@ function DashboardCurso() {
           <h1>{course?.name ?? (courseLoading ? 'Cargando curso…' : 'Curso')}</h1>
           <p className="muted">Fuente: Moodle · Última sincronización: {lastSync}</p>
         </div>
-        <Link className="button button--secondary" to={`/cursos/${id}/alertas`}>Ver alertas</Link>
+        <div className="page-heading__actions">
+          <Link className="button button--secondary" to={`/cursos/${id}/alertas`}>Ver alertas</Link>
+          <Link className="button button--secondary" to={`/cursos/${id}/informes`}>Informes</Link>
+        </div>
       </div>
 
       {error && <p className="course-message course-message--error" role="alert">{error}</p>}

@@ -214,3 +214,39 @@ export async function saveMoodleConfiguration({ baseUrl, token, timeoutSeconds }
 export async function verifyMoodleConnection() {
   return requestJson('/api/moodle/connection-test', { method: 'POST' }, moodleIntegrationUrl)
 }
+
+export async function getCourseReports(courseId) {
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/informes`)
+}
+
+export async function generateCourseReport(courseId, periodo) {
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/informes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ periodo: periodo || null }),
+  })
+}
+
+export async function getCourseReport(courseId, reportId) {
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/informes/${encodeURIComponent(reportId)}`)
+}
+
+export async function downloadCourseReport(courseId, reportId) {
+  const accessToken = sessionStorage.getItem(accessTokenKey)
+  const response = await fetch(
+    `${getApiUrl()}/api/cursos/${encodeURIComponent(courseId)}/informes/${encodeURIComponent(reportId)}/descargar`,
+    { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} },
+  )
+  if (!response.ok) {
+    throw new Error(response.status === 403
+      ? 'No tienes autorización para descargar este informe.'
+      : `No se pudo descargar el informe (HTTP ${response.status}).`)
+  }
+
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `informe-curso-${courseId}.html`
+  link.click()
+  URL.revokeObjectURL(url)
+}
