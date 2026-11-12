@@ -15,6 +15,7 @@ sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\005_academic_integration.sql
 sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\006_academic_analysis.sql
 sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\007_sprint2_audit.sql
 sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\008_analysis_recommendations.sql
+sqlcmd -S 'localhost\SQLEXPRESS' -E -C -i database\009_analysis_alerts.sql
 ```
 
 `-E` usa la identidad de Windows de la terminal y `-C` confía en el certificado local. La identidad debe tener permisos para crear la base y sus tablas la primera vez.
