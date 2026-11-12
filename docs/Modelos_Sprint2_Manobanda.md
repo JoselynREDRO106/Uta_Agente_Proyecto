@@ -6,7 +6,12 @@
 
 Los diagramas describen el modelo que quedó en el repositorio. Las tablas nuevas del Sprint 2 viven en `EduMonitorAnalysis`, salvo `AUDIT_LOG`, que vive en `EduMonitor`. El vínculo con `CURSO` y `ACTIVIDAD` es lógico por `id_moodle` / `id_moodle_curso`: no hay clave foránea entre bases de datos.
 
-El núcleo del Sprint 1 está en `docs/diagramas/modelo-er.png`. La arquitectura general, con Análisis, el agente y las tres bases, está en `docs/diagramas/arquitectura.png` y se reutiliza abajo. El entidad-relación ampliado del Sprint 2 sigue en `docs/diagramas/modelo-er-sprint2.png`.
+Hay cuatro diagramas distintos:
+
+- `docs/diagramas/modelo-er.png`: modelo núcleo del Sprint 1.
+- `docs/diagramas/modelo-er-sprint2.png`: entidad-relación ampliado, con alertas, informe, recomendaciones y auditoría.
+- `docs/diagramas/arquitectura.png`: arquitectura general, con los paquetes de sistema externo, backend y frontend.
+- `docs/diagramas/arquitectura-sprint2.png`: arquitectura de componentes del Sprint 2. Es la figura de esta sección.
 
 ## TE-01 — Modelo de datos y arquitectura ampliados
 
