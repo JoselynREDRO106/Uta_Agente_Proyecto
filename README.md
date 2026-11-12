@@ -192,6 +192,7 @@ Si RabbitMQ no está configurado, la sincronización todavía guarda datos en In
 
 Aplica `database\007_sprint2_audit.sql` y `database\008_analysis_recommendations.sql` después de crear las bases. El dashboard del curso usa estas rutas protegidas por JWT y autorización del curso:
 
+- `GET /api/cursos/{cursoId}/estudiantes/{estudianteId}/seguimiento` (seguimiento individual: notas con escala y estado de actividades)
 - `GET /api/cursos/{cursoId}/analisis-grupal?umbral=6&minimoCalificaciones=7`
 - `POST /api/cursos/{cursoId}/consultar`
 - `GET /api/cursos/{cursoId}/recomendaciones`
@@ -226,7 +227,7 @@ Rutas de la aplicación:
 - `/login`
 - `/cursos`
 - `/cursos/:id`
-- `/estudiantes/:id` (el seguimiento individual detallado permanece fuera del Sprint 1)
+- `/cursos/:courseId/estudiantes/:studentId` (seguimiento individual, HU-08)
 
 Las rutas académicas requieren una sesión válida. El listado de cursos y la vista de curso consultan la API; el dashboard presenta indicadores normalizados a escala 0–100 y estados de matrícula. No se asigna cero a una calificación ausente.
 
