@@ -10,8 +10,25 @@ public sealed class AnalysisDbContext(DbContextOptions<AnalysisDbContext> option
     internal DbSet<AcademicPeriodRecord> Periods => Set<AcademicPeriodRecord>();
     internal DbSet<AcademicRecommendationRecord> Recommendations => Set<AcademicRecommendationRecord>();
 
+    internal DbSet<AcademicReportRecord> Reports => Set<AcademicReportRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AcademicReportRecord>(entity =>
+        {
+            entity.ToTable("ACADEMIC_REPORT", "dbo");
+            entity.HasKey(row => row.Id).HasName("PK_ACADEMIC_REPORT");
+            entity.Property(row => row.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(row => row.MoodleCourseId).HasColumnName("id_moodle_curso");
+            entity.Property(row => row.Period).HasColumnName("periodo").HasMaxLength(150);
+            entity.Property(row => row.GeneratedAtUtc).HasColumnName("fecha_generacion_utc");
+            entity.Property(row => row.DataAtUtc).HasColumnName("fecha_datos_utc");
+            entity.Property(row => row.IncompleteData).HasColumnName("datos_incompletos");
+            entity.Property(row => row.ContentJson).HasColumnName("contenido_json")
+                .HasColumnType("nvarchar(max)");
+            entity.Property(row => row.CreatedBy).HasColumnName("creado_por").HasMaxLength(200);
+        });
+
         modelBuilder.Entity<CourseProjectionRecord>(entity =>
         {
             entity.ToTable("COURSE_PROJECTION", "dbo");
@@ -72,6 +89,18 @@ public sealed class AnalysisDbContext(DbContextOptions<AnalysisDbContext> option
                 .HasDatabaseName("IX_ACADEMIC_RECOMMENDATION_COURSE_DATE");
         });
     }
+}
+
+internal sealed class AcademicReportRecord
+{
+    public Guid Id { get; set; }
+    public int MoodleCourseId { get; set; }
+    public string Period { get; set; } = string.Empty;
+    public DateTime GeneratedAtUtc { get; set; }
+    public DateTime DataAtUtc { get; set; }
+    public bool IncompleteData { get; set; }
+    public string ContentJson { get; set; } = string.Empty;
+    public string CreatedBy { get; set; } = string.Empty;
 }
 
 internal sealed class CourseProjectionRecord

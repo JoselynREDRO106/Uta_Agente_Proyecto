@@ -12,7 +12,7 @@ namespace Uta.Middleware.WebApi.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/cursos")]
-public sealed class CursosController(
+public sealed partial class CursosController(
     IGestionarCursosUseCase gestionarCursos,
     IEduMonitorRepository repository,
     ILogger<CursosController> logger,
