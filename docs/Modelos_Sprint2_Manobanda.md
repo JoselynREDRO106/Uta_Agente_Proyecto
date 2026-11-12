@@ -12,36 +12,7 @@ Los dibujos del Sprint 1 siguen en `docs/diagramas/modelo-er.png` y `docs/diagra
 
 ### Arquitectura de componentes
 
-```mermaid
-flowchart LR
-    React["Frontend React"]
-    Identidad["Identidad .NET"]
-    Middleware["Middleware .NET"]
-    Analisis["Analisis academico .NET"]
-    Agente["Agente Python"]
-    Ollama["Ollama local"]
-    MoodleApi["Integracion Moodle .NET"]
-    Rabbit["RabbitMQ"]
-    Moodle["Moodle LMS"]
-    EduMonitor[("EduMonitor\nSprint 1 y AUDIT_LOG")]
-    Analysis[("EduMonitorAnalysis\nALERT_RULE, ALERT_STATE,\nACADEMIC_REPORT,\nACADEMIC_RECOMMENDATION")]
-    MoodleDb[("MoodleIntegration")]
-
-    React -->|"REST"| Middleware
-    React -->|"JWT"| Identidad
-    Middleware -->|"valida sesion"| Identidad
-    Middleware -->|"consultas"| Analisis
-    Middleware -->|"pregunta y contexto"| Agente
-    Middleware -->|"AUDIT_LOG"| EduMonitor
-    Analisis -->|"lectura y escritura"| Analysis
-    Agente -->|"redaccion local"| Ollama
-    Moodle -->|"token y JSON"| MoodleApi
-    MoodleApi -->|"snapshot y outbox"| MoodleDb
-    MoodleApi -->|"publica eventos"| Rabbit
-    Rabbit -->|"proyeccion del curso"| Analisis
-```
-
-Las imágenes listas para el informe están en [arquitectura-sprint2.png](diagramas/arquitectura-sprint2.png) y [modelo-er-sprint2.png](diagramas/modelo-er-sprint2.png).
+![Arquitectura de componentes EduMonitor](diagramas/arquitectura-sprint2.png)
 
 El docente no habla con Análisis ni con el agente de forma directa. Middleware valida el curso del JWT y reenvía la consulta. El agente no abre SQL Server: redacta con los indicadores y el análisis grupal que Middleware ya obtuvo. Ollama permanece en la red local del proyecto.
 
@@ -49,79 +20,9 @@ El docente no habla con Análisis ni con el agente de forma directa. Middleware 
 
 `COURSE_PROJECTION` guarda el snapshot sincronizado. De ese snapshot se calculan el seguimiento individual y las alertas. `ALERT_RULE` y `ALERT_STATE` guardan la configuración y el estado pedagógico. `ACADEMIC_REPORT` y `ACADEMIC_RECOMMENDATION` guardan el informe y las propuestas. La evidencia de una alerta no es una tabla: se arma al consultar el snapshot.
 
-```mermaid
-erDiagram
-    CURSO ||--o{ ACTIVIDAD : contiene
-    CURSO ||--o{ MATRICULA : matricula
-    USUARIO ||--o{ MATRICULA : cursa
-    USUARIO ||--o{ CALIFICACION : tiene
-    ACTIVIDAD ||--o{ CALIFICACION : registra
-    ACTIVIDAD ||--o{ MAPEO_TEMATICO : asocia
-    CURSO ||--o{ COURSE_PROJECTION : proyecta
-    CURSO ||--o{ ALERT_RULE : configura
-    CURSO ||--o{ ALERT_STATE : evalua
-    USUARIO ||--o{ ALERT_STATE : estudiante
-    CURSO ||--o{ ACADEMIC_REPORT : informa
-    CURSO ||--o{ ACADEMIC_RECOMMENDATION : propone
-    ACTIVIDAD ||--o{ ACADEMIC_RECOMMENDATION : actividad
+![Modelo entidad-relación EduMonitor](diagramas/modelo-er-sprint2.png)
 
-    ALERT_RULE {
-        int id_moodle_curso PK
-        string tipo PK
-        decimal umbral
-        bit activa
-        string actualizado_por
-        datetime actualizado_utc
-    }
-    ALERT_STATE {
-        int id_moodle_curso PK
-        int id_estudiante PK
-        string tipo PK
-        string estado
-        string actualizado_por
-        datetime actualizado_utc
-    }
-    ACADEMIC_REPORT {
-        guid id PK
-        int id_moodle_curso
-        string periodo
-        datetime fecha_generacion_utc
-        datetime fecha_datos_utc
-        bit datos_incompletos
-        string contenido_json
-        string creado_por
-    }
-    ACADEMIC_RECOMMENDATION {
-        guid id PK
-        int id_moodle_curso
-        int id_actividad_moodle
-        decimal promedio
-        int num_calificaciones
-        decimal umbral
-        string texto
-        string justificacion
-        string indicadores_json
-        string estado
-        guid source_event_id
-    }
-    COURSE_PROJECTION {
-        int id_moodle_curso PK
-        string snapshot_json
-        datetime updated_at_utc
-        guid source_event_id
-    }
-    AUDIT_LOG {
-        bigint id PK
-        datetime fecha_utc
-        string usuario_id
-        string tipo
-        int curso_moodle_id
-        string resultado
-        string detalle
-    }
-```
-
-Las fuentes están en `docs/diagramas/modelo-er-sprint2.mmd` y `docs/diagramas/arquitectura-sprint2.mmd`.
+Esas dos figuras salen de PlantUML. Los diagramas de clases y de secuencia de cada tarea siguen en este documento.
 
 ### Diccionario de las tablas nuevas
 
