@@ -60,7 +60,7 @@ function Auditoria() {
         <div>
           <span className="eyebrow">ADMINISTRACIÓN</span>
           <h1>Auditoría</h1>
-          <p className="muted">Consultas, sincronizaciones y cambios de recomendaciones. No se almacenan secretos ni texto de preguntas.</p>
+          <p className="muted">Consultas, sincronizaciones, alertas, recomendaciones e informes. No se almacenan secretos ni texto de preguntas.</p>
         </div>
       </div>
       <section className="content-card">
@@ -73,6 +73,10 @@ function Auditoria() {
             <option value="AnalisisGrupal">Análisis grupal</option>
             <option value="RecomendacionGenerada">Recomendación generada</option>
             <option value="EstadoRecomendacionActualizado">Estado de recomendación</option>
+            <option value="ReglasAlertaActualizadas">Reglas de alerta actualizadas</option>
+            <option value="EstadoAlertaActualizado">Estado de alerta</option>
+            <option value="InformeGenerado">Informe generado</option>
+            <option value="InformeDescargado">Informe descargado</option>
           </select>
           <label htmlFor="audit-from">Desde</label>
           <input id="audit-from" onChange={(event) => setFromInput(event.target.value)} type="date" value={fromInput} />

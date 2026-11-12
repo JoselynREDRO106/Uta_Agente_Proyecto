@@ -107,7 +107,7 @@ function FichaEstudiante() {
                   {notes.map((note) => (
                     <tr key={note.itemId}>
                       <td>{note.item}</td>
-                      <td>{note.fechaUtc ? dateFormat.format(new Date(note.fechaUtc)) : '—'}</td>
+                      <td>{note.fechaUtc && new Date(note.fechaUtc).getFullYear() > 2000 ? dateFormat.format(new Date(note.fechaUtc)) : '—'}</td>
                       <td>
                         {note.nota == null
                           ? <span className="status-pill status-pill--neutral">sin dato</span>
