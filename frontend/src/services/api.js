@@ -107,6 +107,12 @@ export async function getCourseStudents(courseId, { search = '', status = '', pa
   return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/estudiantes?${query}`)
 }
 
+export async function getStudentTracking(courseId, studentId) {
+  return requestJson(
+    `/api/cursos/${encodeURIComponent(courseId)}/estudiantes/${encodeURIComponent(studentId)}/seguimiento`,
+  )
+}
+
 export async function getCourseIndicators(courseId) {
   return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/indicadores`)
 }

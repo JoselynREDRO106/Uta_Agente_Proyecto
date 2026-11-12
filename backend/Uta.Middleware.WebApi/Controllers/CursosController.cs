@@ -150,6 +150,48 @@ public sealed class CursosController(
             courseId, search, status?.Trim().ToLowerInvariant(), page, pageSize, cancellationToken));
     }
 
+    [HttpGet("{courseId:int}/estudiantes/{studentId:int}/seguimiento")]
+    [ProducesResponseType(typeof(SeguimientoEstudianteDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<SeguimientoEstudianteDto>> ObtenerSeguimientoEstudiante(
+        int courseId,
+        int studentId,
+        CancellationToken cancellationToken)
+    {
+        if (courseId <= 0 || studentId <= 0)
+        {
+            return BadRequest("El curso y el estudiante deben ser identificadores positivos.");
+        }
+
+        if (!await CanAccessCourseAsync(courseId, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        if (analysisQueries is null)
+        {
+            return Problem(
+                title: "El servicio de Análisis no está configurado.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        try
+        {
+            var tracking = await analysisQueries.GetStudentTrackingAsync(
+                courseId, studentId, GetBearerToken(), cancellationToken);
+            return tracking is null ? NotFound() : Ok(tracking);
+        }
+        catch (HttpRequestException exception)
+        {
+            return DownstreamFailure("Análisis", exception);
+        }
+        catch (JsonException exception)
+        {
+            return DownstreamInvalidResponse("Análisis", exception);
+        }
+    }
+
     [HttpGet("{courseId:int}/indicadores")]
     [ProducesResponseType(typeof(IndicadoresCursoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

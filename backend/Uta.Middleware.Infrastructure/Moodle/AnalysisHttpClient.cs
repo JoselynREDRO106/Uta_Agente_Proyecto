@@ -73,6 +73,29 @@ public sealed class AnalysisHttpClient(
                ?? throw new JsonException("El servicio de Análisis devolvió indicadores vacíos.");
     }
 
+    public async Task<SeguimientoEstudianteDto?> GetStudentTrackingAsync(
+        int courseId,
+        int studentId,
+        string? bearerToken,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            _baseUrl + $"/api/analysis/courses/{courseId}/students/{studentId}/tracking");
+        AddBearerToken(request, bearerToken);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<SeguimientoEstudianteDto>(
+                   JsonOptions, cancellationToken)
+               ?? throw new JsonException("El servicio de Análisis devolvió un seguimiento vacío.");
+    }
+
     public Task<AnalisisGrupalDto> GetGroupAnalysisAsync(
         int courseId,
         decimal threshold,

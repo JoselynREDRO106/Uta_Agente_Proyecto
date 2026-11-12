@@ -30,7 +30,7 @@ function App() {
           <Route element={<AppLayout />}>
             <Route path="/cursos" element={<Cursos />} />
             <Route path="/cursos/:id" element={<DashboardCurso />} />
-            <Route path="/estudiantes/:id" element={<FichaEstudiante />} />
+            <Route path="/cursos/:courseId/estudiantes/:studentId" element={<FichaEstudiante />} />
             <Route element={<RequireAdministrator />}>
               <Route path="/admin/moodle" element={<ConfiguracionMoodle />} />
               <Route path="/admin/sincronizaciones" element={<HistorialSincronizaciones />} />
