@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 using Uta.Middleware.Application.Interfaces;
 using Uta.Middleware.Application.UseCases;
 using Uta.Middleware.Infrastructure.Data;
@@ -25,7 +26,29 @@ public static class InfrastructureServiceExtensions
         services.AddDbContext<EduMonitorDbContext>(options =>
             options.UseSqlServer(connectionString));
         services.AddScoped<IEduMonitorRepository, EduMonitorRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAuthenticationRepository, AuthenticationRepository>();
+
+        var agentSection = configuration.GetSection(AcademicAgentSettings.SectionName);
+        var agentSettings = agentSection.Get<AcademicAgentSettings>() ?? new AcademicAgentSettings();
+        if (!string.IsNullOrWhiteSpace(agentSettings.BaseUrl))
+        {
+            if (!Uri.TryCreate(agentSettings.BaseUrl, UriKind.Absolute, out var agentUri)
+                || (agentUri.Scheme != Uri.UriSchemeHttp && agentUri.Scheme != Uri.UriSchemeHttps)
+                || Encoding.UTF8.GetByteCount(agentSettings.ApiKey) < 32)
+            {
+                throw new InvalidOperationException(
+                    "AcademicAgent__BaseUrl debe ser una URL HTTP(S) y AcademicAgent__ApiKey debe contener al menos 32 bytes.");
+            }
+
+            services.Configure<AcademicAgentSettings>(agentSection);
+            services.AddHttpClient<IAcademicAgentClient, AcademicAgentHttpClient>((sp, client) =>
+            {
+                var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AcademicAgentSettings>>().Value;
+                client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
+                client.Timeout = TimeSpan.FromSeconds(120);
+            });
+        }
 
         // Enlazar configuración de Moodle usando la sección del appsettings.json
         var moodleSection = configuration.GetSection(MoodleSettings.SectionName);

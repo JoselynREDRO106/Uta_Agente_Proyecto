@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Uta.AcademicAnalysis.WebApi.Analysis;
 using Uta.AcademicAnalysis.WebApi.Data;
 using Uta.Middleware.Application.DTOs;
 using Uta.Middleware.Application.DTOs.Moodle;
@@ -121,6 +122,192 @@ public sealed class AcademicAnalysisController(AnalysisDbContext dbContext) : Co
         return Ok(await GetActivePeriodAsync(snapshot, cancellationToken));
     }
 
+    [HttpGet("courses/{courseId:int}/group-analysis")]
+    public async Task<ActionResult<AnalisisGrupalDto>> GetGroupAnalysis(
+        int courseId,
+        [FromQuery] decimal threshold = 6m,
+        [FromQuery] int minimumGrades = 7,
+        CancellationToken cancellationToken = default)
+    {
+        if (!CanAccessCourse(courseId))
+        {
+            return Forbid();
+        }
+
+        if (threshold is <= 0 or > 10 || minimumGrades is < 1 or > 1000)
+        {
+            return BadRequest("El umbral debe estar entre 0 y 10 y el mínimo entre 1 y 1000.");
+        }
+
+        var snapshot = await GetSnapshotAsync(courseId, cancellationToken);
+        if (snapshot is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(GroupAnalysisCalculator.Calculate(snapshot, threshold, minimumGrades));
+    }
+
+    [HttpGet("courses/{courseId:int}/recommendations")]
+    public async Task<ActionResult<IReadOnlyCollection<RecomendacionDto>>> GetRecommendations(
+        int courseId,
+        CancellationToken cancellationToken)
+    {
+        if (!CanAccessCourse(courseId))
+        {
+            return Forbid();
+        }
+
+        var records = await dbContext.Recommendations.AsNoTracking()
+            .Where(item => item.MoodleCourseId == courseId)
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+        return Ok(records.Select(ToRecommendationDto).ToArray());
+    }
+
+    [HttpPost("courses/{courseId:int}/recommendations/generate")]
+    public async Task<ActionResult<ResultadoGenerarRecomendacionesDto>> GenerateRecommendations(
+        int courseId,
+        SolicitudGenerarRecomendacionesDto? request,
+        CancellationToken cancellationToken)
+    {
+        if (!CanAccessCourse(courseId))
+        {
+            return Forbid();
+        }
+
+        request ??= new SolicitudGenerarRecomendacionesDto();
+        if (request.Umbral is <= 0 or > 10
+            || request.MinimoCalificaciones is < 1 or > 1000)
+        {
+            return BadRequest("El umbral debe estar entre 0 y 10 y el mínimo entre 1 y 1000.");
+        }
+
+        var snapshot = await GetSnapshotAsync(courseId, cancellationToken);
+        if (snapshot is null)
+        {
+            return NotFound();
+        }
+
+        var analysis = GroupAnalysisCalculator.Calculate(
+            snapshot, request.Umbral, request.MinimoCalificaciones);
+        var sourceEventId = await dbContext.Courses.AsNoTracking()
+            .Where(item => item.MoodleCourseId == courseId)
+            .Select(item => item.SourceEventId)
+            .SingleAsync(cancellationToken);
+        var lowActivities = analysis.Actividades
+            .Where(item => item.BajoUmbral && item.Promedio.HasValue)
+            .ToArray();
+        var created = 0;
+        var actor = User.Identity?.Name ?? User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "docente";
+
+        foreach (var activity in lowActivities)
+        {
+            var exists = await dbContext.Recommendations.AnyAsync(
+                item => item.SourceEventId == sourceEventId
+                    && item.ActivityId == activity.ItemId,
+                cancellationToken);
+            if (exists)
+            {
+                continue;
+            }
+
+            var average = activity.Promedio!.Value;
+            var justification =
+                $"Promedio {average:0.00}/10 con {activity.NumCalificaciones} calificaciones; "
+                + $"el umbral acordado es {request.Umbral:0.##}/10.";
+            dbContext.Recommendations.Add(new AcademicRecommendationRecord
+            {
+                Id = Guid.NewGuid(),
+                MoodleCourseId = courseId,
+                ActivityId = activity.ItemId,
+                ActivityName = activity.Nombre,
+                Average = average,
+                GradeCount = activity.NumCalificaciones,
+                Threshold = request.Umbral,
+                RecommendationText =
+                    $"Revisar la estrategia de enseñanza de «{activity.Nombre}» y considerar "
+                    + "una actividad de refuerzo con retroalimentación antes de la siguiente evaluación.",
+                Justification = justification,
+                IndicatorsJson = JsonSerializer.Serialize(new
+                {
+                    activityId = activity.ItemId,
+                    average,
+                    scale = activity.Escala,
+                    gradeCount = activity.NumCalificaciones,
+                    threshold = request.Umbral
+                }),
+                State = "Propuesta",
+                SourceEventId = sourceEventId,
+                CreatedBy = actor.Length <= 200 ? actor : actor[..200],
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow
+            });
+            created++;
+        }
+
+        if (created > 0)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        var records = await dbContext.Recommendations.AsNoTracking()
+            .Where(item => item.MoodleCourseId == courseId
+                && item.SourceEventId == sourceEventId)
+            .OrderBy(item => item.ActivityName)
+            .ToListAsync(cancellationToken);
+        return Ok(new ResultadoGenerarRecomendacionesDto(
+            created, records.Select(ToRecommendationDto).ToArray()));
+    }
+
+    [HttpPatch("courses/{courseId:int}/recommendations/{recommendationId:guid}/status")]
+    public async Task<ActionResult<RecomendacionDto>> UpdateRecommendationStatus(
+        int courseId,
+        Guid recommendationId,
+        ActualizarEstadoRecomendacionDto request,
+        CancellationToken cancellationToken)
+    {
+        if (!CanAccessCourse(courseId))
+        {
+            return Forbid();
+        }
+
+        var requestedState = request.Estado?.Trim();
+        if (requestedState is not ("Aceptada" or "Ajustada" or "Descartada"))
+        {
+            return BadRequest("El estado debe ser Aceptada, Ajustada o Descartada.");
+        }
+
+        if (requestedState == "Ajustada"
+            && (string.IsNullOrWhiteSpace(request.Texto) || request.Texto.Trim().Length > 1000))
+        {
+            return BadRequest("Una recomendación ajustada requiere un texto de hasta 1000 caracteres.");
+        }
+
+        var recommendation = await dbContext.Recommendations.SingleOrDefaultAsync(
+            item => item.Id == recommendationId && item.MoodleCourseId == courseId,
+            cancellationToken);
+        if (recommendation is null)
+        {
+            return NotFound();
+        }
+
+        if (recommendation.State != "Propuesta")
+        {
+            return Conflict("Solo se puede cambiar una recomendación que siga en estado Propuesta.");
+        }
+
+        recommendation.State = requestedState;
+        if (requestedState == "Ajustada")
+        {
+            recommendation.RecommendationText = request.Texto!.Trim();
+        }
+
+        recommendation.UpdatedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Ok(ToRecommendationDto(recommendation));
+    }
+
     [HttpPut("courses/{courseId:int}/period")]
     [Authorize(Roles = "Administrador técnico")]
     public async Task<ActionResult<AcademicPeriodDto>> CorrectPeriod(
@@ -227,6 +414,21 @@ public sealed class AcademicAnalysisController(AnalysisDbContext dbContext) : Co
             active,
             "America/Guayaquil");
     }
+
+    private static RecomendacionDto ToRecommendationDto(AcademicRecommendationRecord item) =>
+        new(
+            item.Id,
+            item.MoodleCourseId,
+            item.ActivityId,
+            item.ActivityName,
+            item.Average,
+            10m,
+            item.GradeCount,
+            item.Threshold,
+            item.RecommendationText,
+            item.Justification,
+            item.State,
+            item.CreatedAtUtc);
 
     private static List<EstudianteCursoDto> BuildStudents(
         AcademicCourseSnapshot snapshot,

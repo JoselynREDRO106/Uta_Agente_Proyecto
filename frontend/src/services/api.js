@@ -111,6 +111,60 @@ export async function getCourseIndicators(courseId) {
   return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/indicadores`)
 }
 
+export async function getGroupAnalysis(courseId) {
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/analisis-grupal?umbral=6&minimoCalificaciones=7`)
+}
+
+export async function askCourseAssistant(courseId, pregunta) {
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/consultar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pregunta }),
+  })
+}
+
+export async function getCourseRecommendations(courseId) {
+  const recommendations = await requestJson(`/api/cursos/${encodeURIComponent(courseId)}/recomendaciones`)
+  if (!Array.isArray(recommendations)) {
+    throw new Error('La API devolvió una lista de recomendaciones inválida.')
+  }
+
+  return recommendations
+}
+
+export async function generateCourseRecommendations(courseId) {
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/recomendaciones/generar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ umbral: 6, minimoCalificaciones: 7 }),
+  })
+}
+
+export async function updateRecommendation(courseId, recommendationId, estado, texto) {
+  return requestJson(
+    `/api/cursos/${encodeURIComponent(courseId)}/recomendaciones/${encodeURIComponent(recommendationId)}/estado`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado, texto }),
+    },
+  )
+}
+
+export async function getAuditLogs({
+  tipo = '',
+  desdeUtc = '',
+  hastaUtc = '',
+  pagina = 1,
+  tamanoPagina = 20,
+} = {}) {
+  const query = new URLSearchParams({ pagina: String(pagina), tamanoPagina: String(tamanoPagina) })
+  if (tipo) query.set('tipo', tipo)
+  if (desdeUtc) query.set('desdeUtc', desdeUtc)
+  if (hastaUtc) query.set('hastaUtc', hastaUtc)
+  return requestJson(`/api/auditoria?${query}`)
+}
+
 export async function getMoodleConfiguration() {
   return requestJson('/api/moodle/config', undefined, moodleIntegrationUrl)
 }

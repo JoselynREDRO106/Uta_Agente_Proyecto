@@ -39,6 +39,12 @@ function AppLayout() {
               Sincronizaciones
             </NavLink>
           )}
+          {user?.rol === 'Administrador técnico' && (
+            <NavLink to="/admin/auditoria" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
+              <span className="nav-link__icon" aria-hidden="true">▤</span>
+              Auditoría
+            </NavLink>
+          )}
         </nav>
 
         <div className="sidebar__footer">
