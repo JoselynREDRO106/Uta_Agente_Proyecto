@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import CourseAssistantPanel from '../components/CourseAssistantPanel.jsx'
+import GroupAnalysisPanel from '../components/GroupAnalysisPanel.jsx'
 import MetricCard from '../components/MetricCard.jsx'
+import RecommendationsPanel from '../components/RecommendationsPanel.jsx'
 import { getCourseIndicators, getCourseStudents, getCourses } from '../services/api.js'
 
 const pageSize = 10
@@ -141,6 +144,10 @@ function DashboardCurso() {
           La última sincronización quedó incompleta. Algunos indicadores pueden no estar disponibles.
         </p>
       )}
+
+      <GroupAnalysisPanel courseId={id} />
+      <CourseAssistantPanel courseId={id} />
+      <RecommendationsPanel courseId={id} />
 
       <section className="content-card indicator-distribution">
         <div className="card-heading">

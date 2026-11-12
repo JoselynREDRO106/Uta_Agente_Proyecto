@@ -14,6 +14,7 @@ public sealed class EduMonitorDbContext(DbContextOptions<EduMonitorDbContext> op
     internal DbSet<UsuarioSistemaRow> UsuariosSistema => Set<UsuarioSistemaRow>();
     internal DbSet<AsignacionCursoRow> AsignacionesCurso => Set<AsignacionCursoRow>();
     internal DbSet<SincronizacionRow> Sincronizaciones => Set<SincronizacionRow>();
+    internal DbSet<AuditLogRow> AuditLogs => Set<AuditLogRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -137,6 +138,23 @@ public sealed class EduMonitorDbContext(DbContextOptions<EduMonitorDbContext> op
             entity.HasIndex(row => new { row.CourseId, row.CompletedAtUtc })
                 .HasDatabaseName("IX_SINCRONIZACION_LOG_CURSO_FECHA");
         });
+
+        modelBuilder.Entity<AuditLogRow>(entity =>
+        {
+            entity.ToTable("AUDIT_LOG", "dbo");
+            entity.HasKey(row => row.Id).HasName("PK_AUDIT_LOG");
+            entity.Property(row => row.Id).HasColumnName("id").UseIdentityColumn();
+            entity.Property(row => row.OccurredAtUtc).HasColumnName("fecha_utc");
+            entity.Property(row => row.UserId).HasColumnName("usuario_id").HasMaxLength(200);
+            entity.Property(row => row.UserName).HasColumnName("usuario").HasMaxLength(150);
+            entity.Property(row => row.Role).HasColumnName("rol").HasMaxLength(40);
+            entity.Property(row => row.EventType).HasColumnName("tipo").HasMaxLength(80);
+            entity.Property(row => row.CourseId).HasColumnName("curso_moodle_id");
+            entity.Property(row => row.Result).HasColumnName("resultado").HasMaxLength(20);
+            entity.Property(row => row.Detail).HasColumnName("detalle").HasMaxLength(500);
+            entity.HasIndex(row => new { row.OccurredAtUtc, row.EventType })
+                .HasDatabaseName("IX_AUDIT_LOG_FECHA_TIPO");
+        });
     }
 }
 
@@ -211,4 +229,17 @@ internal sealed class SincronizacionRow
     public DateTime CompletedAtUtc { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? ErrorSummary { get; set; }
+}
+
+internal sealed class AuditLogRow
+{
+    public long Id { get; set; }
+    public DateTime OccurredAtUtc { get; set; }
+    public string? UserId { get; set; }
+    public string UserName { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+    public string EventType { get; set; } = string.Empty;
+    public int? CourseId { get; set; }
+    public string Result { get; set; } = string.Empty;
+    public string Detail { get; set; } = string.Empty;
 }

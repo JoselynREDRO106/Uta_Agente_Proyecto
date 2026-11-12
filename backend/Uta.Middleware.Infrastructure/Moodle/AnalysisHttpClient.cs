@@ -73,6 +73,70 @@ public sealed class AnalysisHttpClient(
                ?? throw new JsonException("El servicio de Análisis devolvió indicadores vacíos.");
     }
 
+    public Task<AnalisisGrupalDto> GetGroupAnalysisAsync(
+        int courseId,
+        decimal threshold,
+        int minimumGrades,
+        string? bearerToken,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<AnalisisGrupalDto>(
+            HttpMethod.Get,
+            $"/api/analysis/courses/{courseId}/group-analysis?threshold={threshold.ToString(System.Globalization.CultureInfo.InvariantCulture)}&minimumGrades={minimumGrades}",
+            null,
+            bearerToken,
+            cancellationToken);
+
+    public Task<IReadOnlyCollection<RecomendacionDto>> GetRecommendationsAsync(
+        int courseId,
+        string? bearerToken,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<IReadOnlyCollection<RecomendacionDto>>(
+            HttpMethod.Get,
+            $"/api/analysis/courses/{courseId}/recommendations",
+            null,
+            bearerToken,
+            cancellationToken);
+
+    public Task<ResultadoGenerarRecomendacionesDto> GenerateRecommendationsAsync(
+        int courseId,
+        SolicitudRecomendacionesGatewayDto requestBody,
+        string? bearerToken,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<ResultadoGenerarRecomendacionesDto>(
+            HttpMethod.Post,
+            $"/api/analysis/courses/{courseId}/recommendations/generate",
+            new SolicitudGenerarRecomendacionesDto(
+                requestBody.Umbral, requestBody.MinimoCalificaciones),
+            bearerToken,
+            cancellationToken);
+
+    public async Task<RecomendacionDto?> UpdateRecommendationAsync(
+        int courseId,
+        Guid recommendationId,
+        ActualizarEstadoRecomendacionDto requestBody,
+        string? bearerToken,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            _baseUrl + $"/api/analysis/courses/{courseId}/recommendations/{recommendationId}/status")
+        {
+            Content = JsonContent.Create(requestBody, options: JsonOptions)
+        };
+        AddBearerToken(request, bearerToken);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<RecomendacionDto>(
+                   JsonOptions, cancellationToken)
+               ?? throw new JsonException("El servicio de Análisis devolvió una recomendación vacía.");
+    }
+
     private async Task<T> SendAsync<T>(
         HttpMethod method,
         string path,

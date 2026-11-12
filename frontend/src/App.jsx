@@ -5,6 +5,7 @@ import Cursos from './pages/Cursos.jsx'
 import DashboardCurso from './pages/DashboardCurso.jsx'
 import FichaEstudiante from './pages/FichaEstudiante.jsx'
 import HistorialSincronizaciones from './pages/HistorialSincronizaciones.jsx'
+import Auditoria from './pages/Auditoria.jsx'
 import { getCurrentUser, hasSession } from './services/api.js'
 import ConfiguracionMoodle from './pages/ConfiguracionMoodle.jsx'
 import './App.css'
@@ -33,6 +34,7 @@ function App() {
             <Route element={<RequireAdministrator />}>
               <Route path="/admin/moodle" element={<ConfiguracionMoodle />} />
               <Route path="/admin/sincronizaciones" element={<HistorialSincronizaciones />} />
+              <Route path="/admin/auditoria" element={<Auditoria />} />
             </Route>
           </Route>
         </Route>

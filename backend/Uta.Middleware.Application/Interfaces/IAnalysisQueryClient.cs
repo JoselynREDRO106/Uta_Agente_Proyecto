@@ -21,4 +21,29 @@ public interface IAnalysisQueryClient
         int courseId,
         string? bearerToken,
         CancellationToken cancellationToken = default);
+
+    Task<AnalisisGrupalDto> GetGroupAnalysisAsync(
+        int courseId,
+        decimal threshold,
+        int minimumGrades,
+        string? bearerToken,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<RecomendacionDto>> GetRecommendationsAsync(
+        int courseId,
+        string? bearerToken,
+        CancellationToken cancellationToken = default);
+
+    Task<ResultadoGenerarRecomendacionesDto> GenerateRecommendationsAsync(
+        int courseId,
+        SolicitudRecomendacionesGatewayDto request,
+        string? bearerToken,
+        CancellationToken cancellationToken = default);
+
+    Task<RecomendacionDto?> UpdateRecommendationAsync(
+        int courseId,
+        Guid recommendationId,
+        ActualizarEstadoRecomendacionDto request,
+        string? bearerToken,
+        CancellationToken cancellationToken = default);
 }
