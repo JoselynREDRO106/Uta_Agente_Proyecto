@@ -9,6 +9,8 @@ public sealed class AnalysisDbContext(DbContextOptions<AnalysisDbContext> option
     internal DbSet<ProcessedEventRecord> ProcessedEvents => Set<ProcessedEventRecord>();
     internal DbSet<AcademicPeriodRecord> Periods => Set<AcademicPeriodRecord>();
     internal DbSet<AcademicRecommendationRecord> Recommendations => Set<AcademicRecommendationRecord>();
+    internal DbSet<AlertRuleRecord> AlertRules => Set<AlertRuleRecord>();
+    internal DbSet<AlertStateRecord> AlertStates => Set<AlertStateRecord>();
 
     internal DbSet<AcademicReportRecord> Reports => Set<AcademicReportRecord>();
 
@@ -27,6 +29,31 @@ public sealed class AnalysisDbContext(DbContextOptions<AnalysisDbContext> option
             entity.Property(row => row.ContentJson).HasColumnName("contenido_json")
                 .HasColumnType("nvarchar(max)");
             entity.Property(row => row.CreatedBy).HasColumnName("creado_por").HasMaxLength(200);
+                    });
+
+        modelBuilder.Entity<AlertRuleRecord>(entity =>
+        {
+            entity.ToTable("ALERT_RULE", "dbo");
+            entity.HasKey(row => new { row.MoodleCourseId, row.Tipo }).HasName("PK_ALERT_RULE");
+            entity.Property(row => row.MoodleCourseId).HasColumnName("id_moodle_curso");
+            entity.Property(row => row.Tipo).HasColumnName("tipo").HasMaxLength(30);
+            entity.Property(row => row.Threshold).HasColumnName("umbral").HasPrecision(6, 2);
+            entity.Property(row => row.Active).HasColumnName("activa");
+            entity.Property(row => row.UpdatedBy).HasColumnName("actualizado_por").HasMaxLength(200);
+            entity.Property(row => row.UpdatedAtUtc).HasColumnName("actualizado_utc");
+        });
+
+        modelBuilder.Entity<AlertStateRecord>(entity =>
+        {
+            entity.ToTable("ALERT_STATE", "dbo");
+            entity.HasKey(row => new { row.MoodleCourseId, row.StudentId, row.Tipo })
+                .HasName("PK_ALERT_STATE");
+            entity.Property(row => row.MoodleCourseId).HasColumnName("id_moodle_curso");
+            entity.Property(row => row.StudentId).HasColumnName("id_estudiante");
+            entity.Property(row => row.Tipo).HasColumnName("tipo").HasMaxLength(30);
+            entity.Property(row => row.State).HasColumnName("estado").HasMaxLength(20);
+            entity.Property(row => row.UpdatedBy).HasColumnName("actualizado_por").HasMaxLength(200);
+            entity.Property(row => row.UpdatedAtUtc).HasColumnName("actualizado_utc");
         });
 
         modelBuilder.Entity<CourseProjectionRecord>(entity =>
@@ -101,6 +128,26 @@ internal sealed class AcademicReportRecord
     public bool IncompleteData { get; set; }
     public string ContentJson { get; set; } = string.Empty;
     public string CreatedBy { get; set; } = string.Empty;
+}
+
+internal sealed class AlertRuleRecord
+{
+    public int MoodleCourseId { get; set; }
+    public string Tipo { get; set; } = string.Empty;
+    public decimal Threshold { get; set; }
+    public bool Active { get; set; }
+    public string UpdatedBy { get; set; } = string.Empty;
+    public DateTime UpdatedAtUtc { get; set; }
+}
+
+internal sealed class AlertStateRecord
+{
+    public int MoodleCourseId { get; set; }
+    public int StudentId { get; set; }
+    public string Tipo { get; set; } = string.Empty;
+    public string State { get; set; } = "Nueva";
+    public string UpdatedBy { get; set; } = string.Empty;
+    public DateTime UpdatedAtUtc { get; set; }
 }
 
 internal sealed class CourseProjectionRecord
