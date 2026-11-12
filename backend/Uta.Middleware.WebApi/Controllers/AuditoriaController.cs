@@ -34,7 +34,8 @@ public sealed class AuditoriaController(IAuditLogRepository auditLog) : Controll
         if (tipo is not null
             && tipo.Trim() is not ("Sincronizacion" or "ConsultaAgente"
                 or "AnalisisGrupal" or "RecomendacionGenerada"
-                or "EstadoRecomendacionActualizado"))
+                or "EstadoRecomendacionActualizado" or "ReglasAlertaActualizadas"
+                or "EstadoAlertaActualizado" or "InformeGenerado" or "InformeDescargado"))
         {
             return BadRequest("El tipo de evento no es válido.");
         }
