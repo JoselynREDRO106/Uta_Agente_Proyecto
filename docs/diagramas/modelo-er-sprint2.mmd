@@ -1,0 +1,120 @@
+erDiagram
+    CURSO ||--o{ ACTIVIDAD : contiene
+    CURSO ||--o{ MATRICULA : matricula
+    USUARIO ||--o{ MATRICULA : cursa
+    USUARIO ||--o{ CALIFICACION : tiene
+    ACTIVIDAD ||--o{ CALIFICACION : registra
+    ACTIVIDAD ||--o{ MAPEO_TEMATICO : asocia
+    CURSO ||--o{ SINCRONIZACION_LOG : bitacora
+
+    CURSO ||--o{ COURSE_PROJECTION : proyecta
+    CURSO ||--o{ ALERT_RULE : configura
+    CURSO ||--o{ ALERT_STATE : evalua
+    USUARIO ||--o{ ALERT_STATE : estudiante
+    CURSO ||--o{ ACADEMIC_REPORT : informa
+    CURSO ||--o{ ACADEMIC_RECOMMENDATION : propone
+    ACTIVIDAD ||--o{ ACADEMIC_RECOMMENDATION : actividad
+
+    CURSO {
+        int id_curso PK
+        int id_moodle UK
+        string nombre_moodle
+    }
+    USUARIO {
+        int id_usuario PK
+        int id_moodle UK
+        string nombre
+        string email
+        string rol
+    }
+    ACTIVIDAD {
+        int id_actividad PK
+        int id_moodle UK
+        int id_curso FK
+        string nombre
+        string categoria
+        decimal nota_maxima
+    }
+    CALIFICACION {
+        int id_calificacion PK
+        int id_usuario FK
+        int id_actividad FK
+        decimal nota
+        string estado
+    }
+    MAPEO_TEMATICO {
+        int id_mapeo PK
+        int id_actividad FK
+        string contenido_minimo
+    }
+    MATRICULA {
+        int id_curso PK
+        int id_usuario PK
+    }
+    SINCRONIZACION_LOG {
+        int id_sincronizacion PK
+        int id_curso FK
+        datetime fecha_utc
+        string resultado
+        string errores
+    }
+    COURSE_PROJECTION {
+        int id_moodle_curso PK
+        string nombre
+        string snapshot_json
+        datetime updated_at_utc
+        guid source_event_id
+    }
+    ALERT_RULE {
+        int id_moodle_curso PK
+        string tipo PK
+        decimal umbral
+        bit activa
+        string actualizado_por
+        datetime actualizado_utc
+    }
+    ALERT_STATE {
+        int id_moodle_curso PK
+        int id_estudiante PK
+        string tipo PK
+        string estado
+        string actualizado_por
+        datetime actualizado_utc
+    }
+    ACADEMIC_REPORT {
+        guid id PK
+        int id_moodle_curso
+        string periodo
+        datetime fecha_generacion_utc
+        datetime fecha_datos_utc
+        bit datos_incompletos
+        string contenido_json
+        string creado_por
+    }
+    ACADEMIC_RECOMMENDATION {
+        guid id PK
+        int id_moodle_curso
+        int id_actividad_moodle
+        string actividad
+        decimal promedio
+        int num_calificaciones
+        decimal umbral
+        string texto
+        string justificacion
+        string indicadores_json
+        string estado
+        guid source_event_id
+        string creado_por
+        datetime fecha_utc
+    }
+    AUDIT_LOG {
+        bigint id PK
+        datetime fecha_utc
+        string usuario_id
+        string usuario
+        string rol
+        string tipo
+        int curso_moodle_id
+        string resultado
+        string detalle
+    }

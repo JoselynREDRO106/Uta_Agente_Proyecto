@@ -56,8 +56,12 @@ docker exec -it edumonitor-sql bash -lc '/opt/mssql-tools18/bin/sqlcmd -S localh
 | `ASIGNACION_DOCENTE_CURSO` | Cursos Moodle que puede consultar cada docente del sistema. |
 | `SINCRONIZACION_LOG` | Fecha UTC, resultado y resumen de errores por sincronización. |
 | `AUDIT_LOG` | Usuario, rol, fecha, tipo y resultado de acciones auditables; no almacena preguntas, tokens ni calificaciones individuales. |
+| `ALERT_RULE` | En `EduMonitorAnalysis`. Umbral y estado activo de `Descenso`, `Atraso` o `BajaFinalizacion` por curso. |
+| `ALERT_STATE` | En `EduMonitorAnalysis`. Estado pedagógico de una alerta: `Nueva`, `Revisada` o `Descartada`. |
+| `ACADEMIC_REPORT` | En `EduMonitorAnalysis`. Informe del curso, con período, fecha de los datos y contenido JSON. |
+| `ACADEMIC_RECOMMENDATION` | En `EduMonitorAnalysis`. Propuesta justificada por indicadores y su estado pedagógico. |
 
-`EduMonitorAnalysis.dbo.ACADEMIC_RECOMMENDATION` conserva las propuestas justificadas por indicadores, la evidencia agregada y su estado pedagógico.
+El modelo consolidado, el diagrama entidad-relación y los diagramas de secuencia están en [docs/Modelos_Sprint2_Manobanda.md](../docs/Modelos_Sprint2_Manobanda.md).
 
 Con la extracción de Identidad, `USUARIO_SISTEMA` y `ASIGNACION_DOCENTE_CURSO` se copian también a la base lógica `EduMonitorIdentity`; el middleware heredado mantiene sus tablas de origen durante la migración gradual. Los nuevos JWT de Identidad llevan la lista de cursos asignados y el middleware la valida localmente.
 

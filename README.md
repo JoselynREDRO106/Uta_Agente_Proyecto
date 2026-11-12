@@ -17,7 +17,7 @@ frontend/      Interfaz React + Vite
 database/      Scripts de SQL Server (entrega del responsable DBA)
 infra/         Entorno Moodle (entrega del responsable DevOps/Moodle)
 agent/         Servicio local del agente FastAPI/LangGraph y sus pruebas
-docs/          Planificación, diagramas y mockups
+docs/          Planificación, diagramas, mockups y modelos del Sprint 2
 docker-compose.yml
 .env.example
 ```
