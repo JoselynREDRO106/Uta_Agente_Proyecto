@@ -251,13 +251,23 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
 
         request ??= new SolicitudGenerarRecomendacionesDto();
         if (request.Umbral is <= 0 or > 10
-            || request.MinimoCalificaciones is < 1 or > 1000)
+            || request.MinimoCalificaciones is < 1 or > 1000
+            || request.EstudianteId is <= 0)
         {
-            return BadRequest("El umbral debe estar entre 0 y 10 y el mínimo entre 1 y 1000.");
+            return BadRequest("El umbral debe estar entre 0 y 10, el mínimo entre 1 y 1000 y el estudiante debe ser positivo.");
         }
 
         var snapshot = await GetSnapshotAsync(courseId, cancellationToken);
         if (snapshot is null)
+        {
+            return NotFound();
+        }
+        if (request.EstudianteId is { } requestedStudentId
+            && snapshot.EnrolledUsers.All(user =>
+                user.Id != requestedStudentId
+                || !user.Roles.Any(role =>
+                    role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
+                    || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase))))
         {
             return NotFound();
         }
@@ -268,56 +278,13 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
             .Where(item => item.MoodleCourseId == courseId)
             .Select(item => item.SourceEventId)
             .SingleAsync(cancellationToken);
-        var lowActivities = analysis.Actividades
-            .Where(item => item.BajoUmbral && item.Promedio.HasValue)
-            .ToArray();
-        var created = 0;
         var actor = User.Identity?.Name ?? User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "docente";
 
-        foreach (var activity in lowActivities)
-        {
-            var exists = await dbContext.Recommendations.AnyAsync(
-                item => item.SourceEventId == sourceEventId
-                    && item.ActivityId == activity.ItemId,
-                cancellationToken);
-            if (exists)
-            {
-                continue;
-            }
-
-            var average = activity.Promedio!.Value;
-            var justification =
-                $"Promedio {average:0.00}/10 con {activity.NumCalificaciones} calificaciones; "
-                + $"el umbral acordado es {request.Umbral:0.##}/10.";
-            dbContext.Recommendations.Add(new AcademicRecommendationRecord
-            {
-                Id = Guid.NewGuid(),
-                MoodleCourseId = courseId,
-                ActivityId = activity.ItemId,
-                ActivityName = activity.Nombre,
-                Average = average,
-                GradeCount = activity.NumCalificaciones,
-                Threshold = request.Umbral,
-                RecommendationText =
-                    $"Revisar la estrategia de enseñanza de «{activity.Nombre}» y considerar "
-                    + "una actividad de refuerzo con retroalimentación antes de la siguiente evaluación.",
-                Justification = justification,
-                IndicatorsJson = JsonSerializer.Serialize(new
-                {
-                    activityId = activity.ItemId,
-                    average,
-                    scale = activity.Escala,
-                    gradeCount = activity.NumCalificaciones,
-                    threshold = request.Umbral
-                }),
-                State = "Propuesta",
-                SourceEventId = sourceEventId,
-                CreatedBy = actor.Length <= 200 ? actor : actor[..200],
-                CreatedAtUtc = DateTime.UtcNow,
-                UpdatedAtUtc = DateTime.UtcNow
-            });
-            created++;
-        }
+        var created = request.EstudianteId is { } studentId
+            ? await GenerateStudentRecommendationsAsync(
+                snapshot, studentId, sourceEventId, request.Umbral, actor, cancellationToken)
+            : await GenerateGroupRecommendationsAsync(
+                courseId, analysis, sourceEventId, request.Umbral, actor, cancellationToken);
 
         if (created > 0)
         {
@@ -331,6 +298,187 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
             .ToListAsync(cancellationToken);
         return Ok(new ResultadoGenerarRecomendacionesDto(
             created, records.Select(ToRecommendationDto).ToArray()));
+    }
+
+    private async Task<int> GenerateGroupRecommendationsAsync(
+        int courseId,
+        AnalisisGrupalDto analysis,
+        Guid sourceEventId,
+        decimal threshold,
+        string actor,
+        CancellationToken cancellationToken)
+    {
+        var created = 0;
+        foreach (var activity in analysis.Actividades.Where(item => item.BajoUmbral && item.Promedio.HasValue))
+        {
+            var exists = await dbContext.Recommendations.AnyAsync(
+                item => item.SourceEventId == sourceEventId
+                    && item.ActivityId == activity.ItemId
+                    && item.StudentId == null,
+                cancellationToken);
+            if (exists)
+            {
+                continue;
+            }
+
+            var average = activity.Promedio!.Value;
+            dbContext.Recommendations.Add(new AcademicRecommendationRecord
+            {
+                Id = Guid.NewGuid(),
+                MoodleCourseId = courseId,
+                ActivityId = activity.ItemId,
+                ActivityName = activity.Nombre,
+                Average = average,
+                GradeCount = activity.NumCalificaciones,
+                Threshold = threshold,
+                RecommendationText =
+                    $"Revisar la estrategia de enseñanza de «{activity.Nombre}» y considerar "
+                    + "una actividad de refuerzo con retroalimentación antes de la siguiente evaluación.",
+                Justification =
+                    $"Promedio {average:0.00}/10 con {activity.NumCalificaciones} calificaciones; "
+                    + $"el umbral acordado es {threshold:0.##}/10.",
+                IndicatorsJson = JsonSerializer.Serialize(new
+                {
+                    activityId = activity.ItemId,
+                    average,
+                    scale = activity.Escala,
+                    gradeCount = activity.NumCalificaciones,
+                    threshold
+                }),
+                State = "Propuesta",
+                SourceEventId = sourceEventId,
+                CreatedBy = TruncateActor(actor),
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow
+            });
+            created++;
+        }
+
+        return created;
+    }
+
+    private async Task<int> GenerateStudentRecommendationsAsync(
+        AcademicCourseSnapshot snapshot,
+        int studentId,
+        Guid sourceEventId,
+        decimal threshold,
+        string actor,
+        CancellationToken cancellationToken)
+    {
+        var student = snapshot.EnrolledUsers.FirstOrDefault(user =>
+            user.Id == studentId
+            && user.Roles.Any(role =>
+                role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
+                || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)));
+        if (student is null)
+        {
+            return 0;
+        }
+
+        var gradesByItem = snapshot.Grades.Grades
+            .Where(grade => grade.UserId == studentId)
+            .GroupBy(grade => grade.ItemId)
+            .ToDictionary(group => group.Key, group => group.First());
+        var eligibleItems = snapshot.Grades.Items
+            .Where(item => item.GradeMax > item.GradeMin
+                && !item.ItemType.Equals("course", StringComparison.OrdinalIgnoreCase)
+                && !item.ItemType.Equals("category", StringComparison.OrdinalIgnoreCase));
+        var created = 0;
+
+        foreach (var item in eligibleItems)
+        {
+            if (!gradesByItem.TryGetValue(item.Id, out var grade)
+                || !decimal.TryParse(
+                    grade.Grade,
+                    System.Globalization.NumberStyles.Number,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var rawGrade))
+            {
+                continue;
+            }
+
+            var score = decimal.Round((rawGrade - item.GradeMin) * 10m / (item.GradeMax - item.GradeMin), 2);
+            if (score >= threshold)
+            {
+                continue;
+            }
+
+            var exists = await dbContext.Recommendations.AnyAsync(
+                recommendation => recommendation.SourceEventId == sourceEventId
+                    && recommendation.ActivityId == item.Id
+                    && recommendation.StudentId == studentId,
+                cancellationToken);
+            if (exists)
+            {
+                continue;
+            }
+
+            var evidenceAtUtc = ParseRecommendationEvidenceDate(grade.DateGraded)
+                ?? ParseRecommendationEvidenceDate(grade.DateSubmitted);
+            var studentName = student.FullName.Length <= 200 ? student.FullName : student.FullName[..200];
+            var justification =
+                $"{studentName} obtuvo {score:0.00}/10 en «{item.ItemName}»; "
+                + $"el umbral acordado es {threshold:0.##}/10."
+                + (evidenceAtUtc.HasValue
+                    ? $" Evidencia registrada el {evidenceAtUtc.Value:yyyy-MM-dd} UTC."
+                    : " Moodle no proporcionó fecha para esta evidencia.");
+
+            dbContext.Recommendations.Add(new AcademicRecommendationRecord
+            {
+                Id = Guid.NewGuid(),
+                MoodleCourseId = snapshot.MoodleCourseId,
+                StudentId = studentId,
+                StudentName = studentName,
+                ActivityId = item.Id,
+                ActivityName = item.ItemName,
+                Average = score,
+                GradeCount = 1,
+                Threshold = threshold,
+                EvidenceAtUtc = evidenceAtUtc,
+                RecommendationText =
+                    $"Coordinar con {studentName} una actividad de refuerzo para «{item.ItemName}» "
+                    + "y acordar una revisión breve de su progreso.",
+                Justification = justification,
+                IndicatorsJson = JsonSerializer.Serialize(new
+                {
+                    studentId,
+                    student = studentName,
+                    activityId = item.Id,
+                    activity = item.ItemName,
+                    score,
+                    scale = 10m,
+                    threshold,
+                    evidenceAtUtc
+                }),
+                State = "Propuesta",
+                SourceEventId = sourceEventId,
+                CreatedBy = TruncateActor(actor),
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow
+            });
+            created++;
+        }
+
+        return created;
+    }
+
+    private static string TruncateActor(string actor) =>
+        actor.Length <= 200 ? actor : actor[..200];
+
+    private static DateTime? ParseRecommendationEvidenceDate(string value)
+    {
+        if (!long.TryParse(
+                value,
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var timestamp)
+            || timestamp <= 0
+            || timestamp > 253402300799)
+        {
+            return null;
+        }
+
+        return DateTimeOffset.FromUnixTimeSeconds(timestamp).UtcDateTime;
     }
 
     [HttpPatch("courses/{courseId:int}/recommendations/{recommendationId:guid}/status")]
@@ -501,7 +649,10 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
             item.RecommendationText,
             item.Justification,
             item.State,
-            item.CreatedAtUtc);
+            item.CreatedAtUtc,
+            item.StudentId,
+            item.StudentName,
+            item.EvidenceAtUtc);
 
     private static List<EstudianteCursoDto> BuildStudents(
         AcademicCourseSnapshot snapshot,

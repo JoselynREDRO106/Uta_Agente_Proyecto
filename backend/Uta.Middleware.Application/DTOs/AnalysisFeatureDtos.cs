@@ -37,11 +37,15 @@ public sealed record RecomendacionDto(
     string Texto,
     string Justificacion,
     string Estado,
-    DateTime FechaUtc);
+    DateTime FechaUtc,
+    int? EstudianteId = null,
+    string? Estudiante = null,
+    DateTime? FechaEvidenciaUtc = null);
 
 public sealed record SolicitudGenerarRecomendacionesDto(
     decimal Umbral = 6m,
-    int MinimoCalificaciones = 7);
+    int MinimoCalificaciones = 7,
+    int? EstudianteId = null);
 
 public sealed record ResultadoGenerarRecomendacionesDto(
     int Creadas,
@@ -93,7 +97,8 @@ public sealed record RespuestaAsistenteCursoDto(
 
 public sealed record SolicitudRecomendacionesGatewayDto(
     decimal Umbral = 6m,
-    int MinimoCalificaciones = 7);
+    int MinimoCalificaciones = 7,
+    int? EstudianteId = null);
 
 public sealed record SeguimientoNotaDto(
     int ItemId,

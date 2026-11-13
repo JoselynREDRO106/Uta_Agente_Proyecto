@@ -40,7 +40,7 @@ function AppLayout() {
             </NavLink>
           )}
           {user?.rol === 'Administrador técnico' && (
-            <NavLink to="/admin/auditoria" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
+            <NavLink to="/auditoria" className={({ isActive }) => `nav-link${isActive ? ' is-active' : ''}`}>
               <span className="nav-link__icon" aria-hidden="true">▤</span>
               Auditoría
             </NavLink>

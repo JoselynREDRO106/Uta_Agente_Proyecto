@@ -327,9 +327,10 @@ public sealed partial class CursosController(
         CancellationToken cancellationToken)
     {
         if (courseId <= 0 || request.Umbral is <= 0 or > 10
-            || request.MinimoCalificaciones is < 1 or > 1000)
+            || request.MinimoCalificaciones is < 1 or > 1000
+            || request.EstudianteId is <= 0)
         {
-            return BadRequest("Indique un curso válido, un umbral entre 0 y 10 y un mínimo entre 1 y 1000.");
+            return BadRequest("Indique un curso válido, un umbral entre 0 y 10, un mínimo entre 1 y 1000 y un estudiante positivo.");
         }
 
         if (!await CanAccessCourseAsync(courseId, cancellationToken))
