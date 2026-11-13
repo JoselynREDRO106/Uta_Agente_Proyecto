@@ -72,7 +72,7 @@ function InformesCurso() {
           <Link className="back-link" to={`/cursos/${id}`}>← Volver al curso</Link>
           <span className="eyebrow">INFORMES</span>
           <h1>Informe académico del curso</h1>
-          <p className="muted">Genere un informe con las métricas y hallazgos de la última sincronización.</p>
+          <p className="muted">Genere un informe con métricas y hallazgos, y descárguelo en PDF.</p>
         </div>
       </div>
 
@@ -106,7 +106,7 @@ function InformesCurso() {
                 Datos actualizados al: {formatDate(selected.fechaActualizacionDatosUtc)}
               </p>
             </div>
-            <button className="button button--secondary" onClick={() => download(selected.id)} type="button">Descargar</button>
+            <button className="button button--secondary" onClick={() => download(selected.id)} type="button">Descargar PDF</button>
           </div>
           {content.aviso && <p className="course-message course-message--warning" role="status">{content.aviso}</p>}
           <h3>Métricas</h3>
@@ -143,7 +143,7 @@ function InformesCurso() {
                   <td>{report.datosIncompletos ? 'Incompletos' : 'Completos'}</td>
                   <td>
                     <button className="button button--secondary" onClick={() => view(report.id)} type="button">Ver</button>{' '}
-                    <button className="button button--secondary" onClick={() => download(report.id)} type="button">Descargar</button>
+                    <button className="button button--secondary" onClick={() => download(report.id)} type="button">PDF</button>
                   </td>
                 </tr>
               ))}

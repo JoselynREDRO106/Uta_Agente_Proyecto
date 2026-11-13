@@ -107,6 +107,26 @@ export async function getCourseStudents(courseId, { search = '', status = '', pa
   return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/estudiantes?${query}`)
 }
 
+export async function getAllCourseStudents(courseId) {
+  const pageSize = 100
+  const firstPage = await getCourseStudents(courseId, { page: 1, pageSize })
+  if (!Array.isArray(firstPage?.items) || !Number.isInteger(firstPage.totalPages)) {
+    throw new Error('La API devolvió una página de estudiantes inválida.')
+  }
+
+  const students = [...firstPage.items]
+  for (let page = 2; page <= firstPage.totalPages; page++) {
+    const result = await getCourseStudents(courseId, { page, pageSize })
+    if (!Array.isArray(result?.items)) {
+      throw new Error(`La API devolvió datos inválidos en la página ${page} de estudiantes.`)
+    }
+
+    students.push(...result.items)
+  }
+
+  return students
+}
+
 export async function getStudentTracking(courseId, studentId) {
   return requestJson(
     `/api/cursos/${encodeURIComponent(courseId)}/estudiantes/${encodeURIComponent(studentId)}/seguimiento`,
@@ -117,8 +137,12 @@ export async function getCourseIndicators(courseId) {
   return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/indicadores`)
 }
 
-export async function getGroupAnalysis(courseId) {
-  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/analisis-grupal?umbral=6&minimoCalificaciones=7`)
+export async function getGroupAnalysis(courseId, { umbral = 6, minimoCalificaciones = 7 } = {}) {
+  const query = new URLSearchParams({
+    umbral: String(umbral),
+    minimoCalificaciones: String(minimoCalificaciones),
+  })
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/analisis-grupal?${query}`)
 }
 
 export async function askCourseAssistant(courseId, pregunta) {
@@ -138,11 +162,11 @@ export async function getCourseRecommendations(courseId) {
   return recommendations
 }
 
-export async function generateCourseRecommendations(courseId) {
+export async function generateCourseRecommendations(courseId, { estudianteId = null } = {}) {
   return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/recomendaciones/generar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ umbral: 6, minimoCalificaciones: 7 }),
+    body: JSON.stringify({ umbral: 6, minimoCalificaciones: 7, estudianteId }),
   })
 }
 
@@ -243,10 +267,15 @@ export async function downloadCourseReport(courseId, reportId) {
       : `No se pudo descargar el informe (HTTP ${response.status}).`)
   }
 
+  const contentType = response.headers.get('Content-Type') || ''
+  if (!contentType.toLowerCase().includes('application/pdf')) {
+    throw new Error('La API devolvió un formato de informe distinto a PDF.')
+  }
+
   const url = URL.createObjectURL(await response.blob())
   const link = document.createElement('a')
   link.href = url
-  link.download = `informe-curso-${courseId}.html`
+  link.download = `informe-curso-${courseId}.pdf`
   link.click()
   URL.revokeObjectURL(url)
 }

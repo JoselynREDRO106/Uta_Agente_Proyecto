@@ -4,6 +4,11 @@ import Login from './pages/Login.jsx'
 import Cursos from './pages/Cursos.jsx'
 import DashboardCurso from './pages/DashboardCurso.jsx'
 import FichaEstudiante from './pages/FichaEstudiante.jsx'
+import EstudiantesCurso from './pages/EstudiantesCurso.jsx'
+import AnalisisGrupalCurso from './pages/AnalisisGrupalCurso.jsx'
+import AsistenteCurso from './pages/AsistenteCurso.jsx'
+import RecomendacionesCurso from './pages/RecomendacionesCurso.jsx'
+import CourseWorkspace from './layouts/CourseWorkspace.jsx'
 import InformesCurso from './pages/InformesCurso.jsx'
 import AlertasCurso from './pages/AlertasCurso.jsx'
 import ReglasAlerta from './pages/ReglasAlerta.jsx'
@@ -32,14 +37,22 @@ function App() {
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>
             <Route path="/cursos" element={<Cursos />} />
-            <Route path="/cursos/:id" element={<DashboardCurso />} />
-            <Route path="/cursos/:id/informes" element={<InformesCurso />} />
-            <Route path="/cursos/:id/alertas" element={<AlertasCurso />} />
-            <Route path="/cursos/:id/alertas/reglas" element={<ReglasAlerta />} />
-            <Route path="/cursos/:courseId/estudiantes/:studentId" element={<FichaEstudiante />} />
+            <Route path="/cursos/:id" element={<CourseWorkspace />}>
+              <Route index element={<DashboardCurso />} />
+              <Route path="estudiantes" element={<EstudiantesCurso />} />
+              <Route path="estudiantes/:studentId" element={<FichaEstudiante />} />
+              <Route path="analisis" element={<AnalisisGrupalCurso />} />
+              <Route path="asistente" element={<AsistenteCurso />} />
+              <Route path="agente" element={<AsistenteCurso />} />
+              <Route path="recomendaciones" element={<RecomendacionesCurso />} />
+              <Route path="informes" element={<InformesCurso />} />
+              <Route path="alertas" element={<AlertasCurso />} />
+              <Route path="alertas/reglas" element={<ReglasAlerta />} />
+            </Route>
             <Route element={<RequireAdministrator />}>
               <Route path="/admin/moodle" element={<ConfiguracionMoodle />} />
               <Route path="/admin/sincronizaciones" element={<HistorialSincronizaciones />} />
+              <Route path="/auditoria" element={<Auditoria />} />
               <Route path="/admin/auditoria" element={<Auditoria />} />
             </Route>
           </Route>

@@ -129,7 +129,7 @@ public sealed class AnalysisHttpClient(
             HttpMethod.Post,
             $"/api/analysis/courses/{courseId}/recommendations/generate",
             new SolicitudGenerarRecomendacionesDto(
-                requestBody.Umbral, requestBody.MinimoCalificaciones),
+                requestBody.Umbral, requestBody.MinimoCalificaciones, requestBody.EstudianteId),
             bearerToken,
             cancellationToken);
 

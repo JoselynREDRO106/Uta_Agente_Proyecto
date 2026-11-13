@@ -14,11 +14,14 @@ BEGIN
         id UNIQUEIDENTIFIER NOT NULL
             CONSTRAINT PK_ACADEMIC_RECOMMENDATION PRIMARY KEY,
         id_moodle_curso INT NOT NULL,
+        id_estudiante INT NULL,
+        estudiante NVARCHAR(200) NULL,
         id_actividad_moodle INT NOT NULL,
         actividad NVARCHAR(200) NOT NULL,
         promedio DECIMAL(6,2) NOT NULL,
         num_calificaciones INT NOT NULL,
         umbral DECIMAL(6,2) NOT NULL,
+        fecha_evidencia_utc DATETIME2 NULL,
         texto NVARCHAR(1000) NOT NULL,
         justificacion NVARCHAR(1000) NOT NULL,
         indicadores_json NVARCHAR(MAX) NOT NULL,
@@ -41,7 +44,18 @@ IF NOT EXISTS (
       AND object_id = OBJECT_ID(N'dbo.ACADEMIC_RECOMMENDATION')
 )
     CREATE UNIQUE INDEX UQ_ACADEMIC_RECOMMENDATION_EVENT_ACTIVITY
-        ON dbo.ACADEMIC_RECOMMENDATION(source_event_id, id_actividad_moodle);
+        ON dbo.ACADEMIC_RECOMMENDATION(source_event_id, id_actividad_moodle)
+        WHERE id_estudiante IS NULL;
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = N'UQ_ACADEMIC_RECOMMENDATION_EVENT_ACTIVITY_STUDENT'
+      AND object_id = OBJECT_ID(N'dbo.ACADEMIC_RECOMMENDATION')
+)
+    CREATE UNIQUE INDEX UQ_ACADEMIC_RECOMMENDATION_EVENT_ACTIVITY_STUDENT
+        ON dbo.ACADEMIC_RECOMMENDATION(source_event_id, id_actividad_moodle, id_estudiante)
+        WHERE id_estudiante IS NOT NULL;
 GO
 
 IF NOT EXISTS (

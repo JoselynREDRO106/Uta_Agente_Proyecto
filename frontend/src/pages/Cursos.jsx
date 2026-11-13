@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getCourses, getCurrentUser, getHealth, syncMoodleCourse } from '../services/api.js'
+import { getCourseIndicators, getCourses, getCurrentUser, getHealth, syncMoodleCourse } from '../services/api.js'
 import { Link } from 'react-router-dom'
 
 function Cursos() {
   const isAdministrator = getCurrentUser()?.rol === 'Administrador técnico'
+  const isTeacher = getCurrentUser()?.rol === 'Docente'
   const [health, setHealth] = useState({ status: 'loading', message: 'Comprobando conexión…' })
   const [courses, setCourses] = useState([])
+  const [indicatorResult, setIndicatorResult] = useState(null)
   const [coursesLoading, setCoursesLoading] = useState(true)
   const [coursesError, setCoursesError] = useState('')
   const [courseId, setCourseId] = useState('')
@@ -62,6 +64,29 @@ function Cursos() {
     }
   }, [loadCourses])
 
+  const courseIdsKey = JSON.stringify(courses.map((course) => String(course.id)))
+  const courseIndicators = indicatorResult?.key === courseIdsKey ? indicatorResult.data : {}
+
+  useEffect(() => {
+    if (!isTeacher || coursesLoading) return undefined
+
+    let active = true
+    Promise.all(courses.map(async (course) => {
+      try {
+        const indicators = await getCourseIndicators(course.id)
+        return [String(course.id), { indicators, error: '' }]
+      } catch (error) {
+        return [String(course.id), { indicators: null, error: error.message }]
+      }
+    })).then((entries) => {
+      if (active) setIndicatorResult({ key: courseIdsKey, data: Object.fromEntries(entries) })
+    })
+
+    return () => {
+      active = false
+    }
+  }, [courses, coursesLoading, courseIdsKey, isTeacher])
+
   async function handleSync(event) {
     event.preventDefault()
     setSyncMessage('')
@@ -85,8 +110,12 @@ function Cursos() {
       <div className="page-heading">
         <div>
           <span className="eyebrow">RESUMEN ACADÉMICO</span>
-          <h1>Mis cursos</h1>
-          <p className="muted">Cursos sincronizados desde Moodle y guardados en EduMonitor.</p>
+          <h1>{isTeacher ? 'Panel docente' : 'Mis cursos'}</h1>
+          <p className="muted">
+            {isTeacher
+              ? 'Resumen de rendimiento de tus cursos asignados.'
+              : 'Cursos sincronizados desde Moodle y guardados en EduMonitor.'}
+          </p>
         </div>
         {isAdministrator && <form className="course-sync-form" onSubmit={handleSync}>
           <label htmlFor="moodle-course-id">ID del curso en Moodle</label>
@@ -109,8 +138,57 @@ function Cursos() {
         <span className="connection-banner__label">Middleware API</span>
         <span>{health.message}</span>
       </div>
+      {coursesError && <p className="course-message course-message--error" role="alert">{coursesError}</p>}
 
-      <section aria-labelledby="courses-title" className="content-card">
+      {isTeacher ? (
+        <section aria-label="Resumen de cursos asignados" className="teacher-course-grid">
+          {coursesLoading && <p className="course-message" role="status">Cargando tus cursos…</p>}
+          {!coursesLoading && courses.map((course) => {
+            const result = courseIndicators[String(course.id)]
+            const indicators = result?.indicators
+            const lastSync = indicators?.ultimaSincronizacionUtc
+              ? new Intl.DateTimeFormat('es-EC', { dateStyle: 'medium' })
+                .format(new Date(indicators.ultimaSincronizacionUtc))
+              : 'Sin sincronización registrada'
+
+            return (
+              <article className="teacher-course-card" key={course.id}>
+                <div className="teacher-course-card__heading">
+                  <span className="course-icon course-icon--blue" aria-hidden="true">▦</span>
+                  <span className="count-pill">Curso {course.id}</span>
+                </div>
+                <h2><Link to={`/cursos/${course.id}`}>{course.name}</Link></h2>
+                <p className="muted">Última sincronización: {lastSync}</p>
+                {result?.error && (
+                  <p className="course-message course-message--error" role="alert">
+                    No se pudieron cargar los indicadores: {result.error}
+                  </p>
+                )}
+                <div aria-busy={!result} className="teacher-course-metrics">
+                  <div>
+                    <span>Estudiantes</span>
+                    <strong>{indicators?.estudiantes ?? (result ? 'Sin datos' : '…')}</strong>
+                  </div>
+                  <div>
+                    <span>Promedio general</span>
+                    <strong>{indicators?.promedio == null ? (result ? 'Sin datos' : '…') : `${Number(indicators.promedio).toFixed(1)} / 100`}</strong>
+                  </div>
+                  <div>
+                    <span>Progreso</span>
+                    <strong>{indicators?.progresoPorcentaje == null ? (result ? 'Sin datos' : '…') : `${indicators.progresoPorcentaje}%`}</strong>
+                  </div>
+                </div>
+                <Link className="button button--secondary teacher-course-card__action" to={`/cursos/${course.id}`}>
+                  Abrir seguimiento del curso
+                </Link>
+              </article>
+            )
+          })}
+          {!coursesLoading && !coursesError && courses.length === 0 && (
+            <p className="course-message" role="status">No tienes cursos asignados. Solicita acceso al administrador técnico.</p>
+          )}
+        </section>
+      ) : <section aria-labelledby="courses-title" className="content-card">
         <div className="card-heading">
           <div>
             <h2 id="courses-title">Asignaturas activas</h2>
@@ -118,7 +196,6 @@ function Cursos() {
           </div>
           <span className="count-pill">{courses.length} cursos</span>
         </div>
-        {coursesError && <p className="course-message course-message--error" role="alert">{coursesError}</p>}
         {syncMessage && <p className="course-message course-message--success" role="status">{syncMessage}</p>}
         <div className="table-scroll">
           <table>
@@ -142,14 +219,18 @@ function Cursos() {
                 </tr>
               ))}
               {!coursesLoading && !coursesError && courses.length === 0 && (
-                <tr><td colSpan="3">{isAdministrator ? 'No hay cursos sincronizados. Ingresa arriba el ID de un curso de Moodle.' : 'No tienes cursos asignados. Solicita acceso al administrador técnico.'}</td></tr>
+                <tr><td colSpan="3">No hay cursos sincronizados. Ingresa arriba el ID de un curso de Moodle.</td></tr>
               )}
             </tbody>
           </table>
         </div>
-      </section>
+      </section>}
 
-      <p className="page-footnote">Los cursos disponibles provienen de Moodle y están limitados a los permisos de tu cuenta.</p>
+      <p className="page-footnote">
+        {isTeacher
+          ? 'Solo se muestran los cursos que el administrador técnico asignó a tu cuenta.'
+          : 'Los cursos disponibles provienen de Moodle y están limitados a los permisos de tu cuenta.'}
+      </p>
     </>
   )
 }

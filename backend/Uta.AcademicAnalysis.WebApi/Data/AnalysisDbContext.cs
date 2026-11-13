@@ -95,11 +95,14 @@ public sealed class AnalysisDbContext(DbContextOptions<AnalysisDbContext> option
             entity.HasKey(row => row.Id).HasName("PK_ACADEMIC_RECOMMENDATION");
             entity.Property(row => row.Id).HasColumnName("id").ValueGeneratedNever();
             entity.Property(row => row.MoodleCourseId).HasColumnName("id_moodle_curso");
+            entity.Property(row => row.StudentId).HasColumnName("id_estudiante");
+            entity.Property(row => row.StudentName).HasColumnName("estudiante").HasMaxLength(200);
             entity.Property(row => row.ActivityId).HasColumnName("id_actividad_moodle");
             entity.Property(row => row.ActivityName).HasColumnName("actividad").HasMaxLength(200);
             entity.Property(row => row.Average).HasColumnName("promedio").HasPrecision(6, 2);
             entity.Property(row => row.GradeCount).HasColumnName("num_calificaciones");
             entity.Property(row => row.Threshold).HasColumnName("umbral").HasPrecision(6, 2);
+            entity.Property(row => row.EvidenceAtUtc).HasColumnName("fecha_evidencia_utc");
             entity.Property(row => row.RecommendationText).HasColumnName("texto").HasMaxLength(1000);
             entity.Property(row => row.Justification).HasColumnName("justificacion").HasMaxLength(1000);
             entity.Property(row => row.IndicatorsJson).HasColumnName("indicadores_json")
@@ -111,7 +114,12 @@ public sealed class AnalysisDbContext(DbContextOptions<AnalysisDbContext> option
             entity.Property(row => row.UpdatedAtUtc).HasColumnName("actualizado_utc");
             entity.HasIndex(row => new { row.SourceEventId, row.ActivityId })
                 .IsUnique()
+                .HasFilter("[id_estudiante] IS NULL")
                 .HasDatabaseName("UQ_ACADEMIC_RECOMMENDATION_EVENT_ACTIVITY");
+            entity.HasIndex(row => new { row.SourceEventId, row.ActivityId, row.StudentId })
+                .IsUnique()
+                .HasFilter("[id_estudiante] IS NOT NULL")
+                .HasDatabaseName("UQ_ACADEMIC_RECOMMENDATION_EVENT_ACTIVITY_STUDENT");
             entity.HasIndex(row => new { row.MoodleCourseId, row.CreatedAtUtc })
                 .HasDatabaseName("IX_ACADEMIC_RECOMMENDATION_COURSE_DATE");
         });
@@ -180,11 +188,14 @@ internal sealed class AcademicRecommendationRecord
 {
     public Guid Id { get; set; }
     public int MoodleCourseId { get; set; }
+    public int? StudentId { get; set; }
+    public string? StudentName { get; set; }
     public int ActivityId { get; set; }
     public string ActivityName { get; set; } = string.Empty;
     public decimal Average { get; set; }
     public int GradeCount { get; set; }
     public decimal Threshold { get; set; }
+    public DateTime? EvidenceAtUtc { get; set; }
     public string RecommendationText { get; set; } = string.Empty;
     public string Justification { get; set; } = string.Empty;
     public string IndicatorsJson { get; set; } = string.Empty;

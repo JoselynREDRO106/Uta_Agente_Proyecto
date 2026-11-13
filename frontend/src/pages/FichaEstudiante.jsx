@@ -31,7 +31,7 @@ function errorMessage(error) {
 }
 
 function FichaEstudiante() {
-  const { courseId, studentId } = useParams()
+  const { id: courseId, studentId } = useParams()
   const key = `${courseId}/${studentId}`
   const [result, setResult] = useState(null)
   const [courseName, setCourseName] = useState('')

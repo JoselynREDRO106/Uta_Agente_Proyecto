@@ -78,10 +78,10 @@ public sealed class AnalysisReportHttpClient(
         EnsureSuccess(response);
         var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
                        ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
-                       ?? $"informe-{reportId}.html";
+                       ?? $"informe-{reportId}.pdf";
         return new ArchivoInforme(
             await response.Content.ReadAsByteArrayAsync(cancellationToken),
-            response.Content.Headers.ContentType?.ToString() ?? "text/html; charset=utf-8",
+            response.Content.Headers.ContentType?.ToString() ?? "application/pdf",
             fileName);
     }
 
