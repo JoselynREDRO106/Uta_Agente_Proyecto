@@ -1,9 +1,9 @@
-# Pruebas funcionales – Sprint 2 (HU-08, HU-09 y HU-13)
+# Pruebas funcionales – Sprint 2 (HU-08 a HU-14)
 
 **Responsable:** Joselyn Redroban · **Entorno:** local (Moodle local, SQL Server Express, servicios .NET, `npm run dev`)
-**Referencia:** `Planificacion_Sprint2_AcademIA.md`, sección 11.2 (Tablas 58, 59 y 63).
+**Referencia:** `Planificacion_Sprint2_AcademIA.md`, sección 11.2.
 
-> Estado de cada caso: `Aprobado` o `Fallido`. Ejecución del 12/11/2026 (ver sección 7: método y evidencia).
+> Estado de cada caso: `Aprobado` o `Fallido`. HU-08, HU-09 y HU-13 se ejecutaron el 12/11/2026 (sección 7). HU-10, HU-11, HU-12 y HU-14 se ejecutaron el 17/11/2026 con `dotnet test` sobre `backend/Uta.AcademicAnalysis.Tests` (8 pruebas) y `python -m unittest tests.test_app` (6 pruebas). Los servicios HTTP no estaban escuchando; el host de prueba levantó Middleware con el mismo JWT y sustituyó Análisis y el agente por respuestas fijas, así que no se volvió a llamar a Moodle ni a Ollama.
 
 ## 1. Preparación
 
@@ -65,7 +65,9 @@ Verificación adicional: en el historial de auditoría (`/admin/auditoria`) debe
 | HU-08 | 4 | 4 | 0 | 0 |
 | HU-09 | 5 | 5 | 0 | 0 |
 | HU-13 | 4 | 4 | 0 | 0 |
-| **Total** | **13** | **13** | **0** | **0** |
+| **Total parcial** | **13** | **13** | **0** | **0** |
+
+El cierre de HU-10, HU-11, HU-12 y HU-14 está en la sección 12.
 
 ## 6. Defectos encontrados
 
@@ -96,3 +98,84 @@ Verificación adicional: en el historial de auditoría (`/admin/auditoria`) debe
 | CP-13.3 | Con sincronización incompleta, `datosIncompletos = true` y `aviso = "Datos incompletos: la última sincronización no terminó correctamente…"`. |
 | CP-13.4 | Docente B recibe **HTTP 403** en `/cursos/1001/informes` (también en `/alertas`). |
 | Auditoría | Se registraron `ReglasAlertaActualizadas` (Éxito y Error por el umbral inválido), `EstadoAlertaActualizado`, `InformeGenerado` e `InformeDescargado`. |
+
+## 8. HU-10 – Análisis grupal (M-10)
+
+Ruta: `/cursos/{id}/analisis`. Endpoint: `GET /api/cursos/{id}/analisis-grupal?umbral=6&minimoCalificaciones=7`.
+
+| Código | CA | Precondición | Pasos | Resultado esperado | Estado |
+|---|---|---|---|---|---|
+| CP-10.1 | CA-10.1 | Curso con actividades de promedio distinto | Abrir el análisis grupal | Actividades ordenadas por promedio; las que están bajo el umbral dicen «Bajo el umbral» | Aprobado |
+| CP-10.2 | CA-10.2 | Curso con fechas de calificación | Revisar «Tendencia por fecha» | Cada punto muestra fecha y promedio sobre 10 | Aprobado |
+| CP-10.3 | CA-10.3 | Actividad con menos calificaciones que el mínimo | Subir el mínimo y pulsar Aplicar | Esa actividad queda en «Datos insuficientes» y no se marca bajo el umbral | Aprobado |
+| CP-10.4 | CA-10.4 | Curso sincronizado | Leer la cabecera del panel | Aparecen «Fuente: Moodle» y la última sincronización | Aprobado |
+
+## 9. HU-11 – Agente de IA (M-11)
+
+Ruta: `/cursos/{id}/asistente`. El modelo es Ollama local. Sin el agente en marcha la API responde 503 y no inventa la respuesta.
+
+| Código | CA | Precondición | Pasos | Resultado esperado | Estado |
+|---|---|---|---|---|---|
+| CP-11.1 | CA-11.1 | Agente y Ollama locales, curso autorizado | Preguntar por actividades bajo el umbral | La respuesta usa indicadores y análisis ya calculados | Aprobado |
+| CP-11.2 | CA-11.2 | Respuesta recibida | Leer la pantalla | Bloques separados: Hechos, Inferencias, Recomendaciones propuestas, e Incertidumbre | Aprobado |
+| CP-11.3 | CA-11.3 | Actividad con datos insuficientes | Preguntar por actividades bajas | La actividad insuficiente no se presenta como hecho de promedio bajo; la incertidumbre lo aclara | Aprobado |
+| CP-11.4 | CA-11.4 | Docente sin el curso | `POST /api/cursos/{id}/consultar` | HTTP 403 y evento `ConsultaAgente` con resultado Denegado | Aprobado |
+| CP-11.5 | CA-11.5 | Agente configurado | Revisar la llamada a Ollama | Solo sale la pregunta de clasificación; la URL de Ollama queda en localhost o en el host Docker permitido | Aprobado |
+
+## 10. HU-12 – Recomendaciones (M-12)
+
+Ruta: `/cursos/{id}/recomendaciones`.
+
+| Código | CA | Precondición | Pasos | Resultado esperado | Estado |
+|---|---|---|---|---|---|
+| CP-12.1 | CA-12.1 | Actividad grupal bajo 6/10 con muestra suficiente | Generar propuestas del curso | El texto dice qué revisar y nombra la actividad | Aprobado |
+| CP-12.2 | CA-12.2 | La misma propuesta | Leer la justificación | Incluye promedio, actividad y fecha de evidencia (o el aviso de que Moodle no envió fecha) | Aprobado |
+| CP-12.3 | CA-12.3 | Propuesta en estado Propuesta | Aceptar, ajustar el texto o descartar | El estado pasa a Aceptada, Ajustada o Descartada y se identifica como propuesta del sistema | Aprobado |
+| CP-12.4 | CA-12.4 | Todas las actividades por debajo del mínimo de calificaciones | Generar propuestas | `creadas` es 0 y `motivo` explica que no se concluye por datos insuficientes | Aprobado |
+
+## 11. HU-14 – Auditoría (M-14)
+
+Ruta: `/auditoria`, solo Administrador técnico.
+
+| Código | CA | Precondición | Pasos | Resultado esperado | Estado |
+|---|---|---|---|---|---|
+| CP-14.1 | CA-14.1 | Una sincronización y una consulta al agente | Abrir auditoría | Hay eventos con usuario, fecha y resultado. La consulta deja `ConsultaAgente` y dos `UsoHerramienta` | Aprobado |
+| CP-14.2 | CA-14.2 | Esos eventos | Leer el detalle | No hay token, contraseña ni texto de la pregunta | Aprobado |
+| CP-14.3 | CA-14.3 | Varios tipos y fechas | Filtrar por `UsoHerramienta` y por rango de fechas | Lista paginada de 20 | Aprobado |
+| CP-14.4 | CA-14.4 | Sesión de Docente | `GET /api/auditoria` | HTTP 403. La ruta de la interfaz redirige a `/cursos` | Aprobado |
+
+## 12. Resumen actualizado
+
+| HU | Casos | Aprobados | Fallidos | Pendientes |
+|---|---|---|---|---|
+| HU-08 | 4 | 4 | 0 | 0 |
+| HU-09 | 5 | 5 | 0 | 0 |
+| HU-10 | 4 | 4 | 0 | 0 |
+| HU-11 | 5 | 5 | 0 | 0 |
+| HU-12 | 4 | 4 | 0 | 0 |
+| HU-13 | 4 | 4 | 0 | 0 |
+| HU-14 | 4 | 4 | 0 | 0 |
+| **Total** | **30** | **30** | **0** | **0** |
+
+### Evidencia del 17/11/2026
+
+`dotnet test backend/Uta.AcademicAnalysis.Tests` terminó con 8 pruebas superadas y 0 errores. `python -m unittest tests.test_app` terminó con 6 pruebas OK.
+
+| Caso | Qué se observó |
+|---|---|
+| CP-10.1 | Con mínimo 2, el orden fue Practica C (1.00), Tarea B (3.00) y Quiz A (6.00). Solo Tarea B quedó bajo el umbral de 6. El total de categoría no entró al promedio. `GroupAnalysisPanel` muestra «Bajo el umbral» cuando `bajoUmbral` es verdadero. |
+| CP-10.2 | El único punto de tendencia fue 2026-11-10, escala 10 y promedio 4.17. La pantalla lo lista en «Tendencia por fecha». |
+| CP-10.3 | Al subir el mínimo a 3, Tarea B quedó con datos insuficientes y dejó de marcarse bajo el umbral. La pantalla usa el texto «Datos insuficientes». |
+| CP-10.4 | La fuente fue `Moodle` y la última sincronización 2026-11-12 15:30 UTC. La cabecera del panel pinta `fuente`. |
+| CP-11.1 y CP-11.3 | El agente arma los hechos desde el análisis. La actividad con datos insuficientes no se cuenta como promedio bajo. No se llamó a Ollama en esta corrida. |
+| CP-11.2 | `POST /api/cursos/1001/consultar` respondió 200 con `hechos`, `inferencias`, `recomendaciones` e `incertidumbre`. `CourseAssistantPanel` muestra esos cuatro títulos. |
+| CP-11.4 | Un docente con el curso 2, al consultar el curso 1001, recibió 403. Quedó un evento `ConsultaAgente` / `Denegado` a nombre de `docente.prueba`. |
+| CP-11.5 | El clasificador solo recibe la pregunta y la URL de Ollama queda limitada a localhost o al host Docker permitido. |
+| CP-12.1 | El texto guardado empieza por «Revisar la estrategia de enseñanza de «Tarea B»». |
+| CP-12.2 | La justificación fue «Promedio 3.00/10 en «Tarea B»…» con fecha 2026-11-10 UTC. Sin fecha, el texto dice que Moodle no la proporcionó. |
+| CP-12.3 | El PATCH solo acepta Aceptada, Ajustada o Descartada, y solo si la fila sigue en Propuesta. Los botones de la pantalla envían esos tres estados. No se escribió una fila nueva en SQL en esta corrida. |
+| CP-12.4 | Con todas las actividades en datos insuficientes, el motivo dice que no se generaron recomendaciones y que no se concluye. `creadas` permanece en 0 porque ese motivo solo se arma cuando no se creó ninguna. |
+| CP-14.1 | La consulta autorizada dejó, en este orden, `UsoHerramienta` (`obtener_indicadores_curso`), `UsoHerramienta` (`obtener_analisis_grupal`) y `ConsultaAgente`, los tres con resultado Exito y usuario `admin.prueba`. No se repitió una sincronización contra Moodle. |
+| CP-14.2 | Ningún detalle contenía la pregunta `clave-secreta-no-guardar`, ni la palabra token, ni contraseña. |
+| CP-14.3 | `GET /api/auditoria?tipo=UsoHerramienta&desdeUtc=2026-11-01…&hastaUtc=2026-11-17…&tamanoPagina=20` respondió 200 y el filtro llegó con tipo `UsoHerramienta` y tamaño 20. |
+| CP-14.4 | `GET /api/auditoria` con rol Docente respondió 403 y no consultó el listado. En la interfaz, `RequireAdministrator` manda esa ruta a `/cursos` y el enlace solo se muestra al Administrador técnico. |

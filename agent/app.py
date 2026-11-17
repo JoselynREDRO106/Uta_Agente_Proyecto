@@ -89,6 +89,7 @@ class AgentAnswer(BaseModel):
     inferencias: list[str] = Field(max_length=8)
     recomendaciones: list[str] = Field(max_length=8)
     incertidumbre: str = Field(min_length=1, max_length=1000)
+    herramientas: list[str] = Field(default_factory=list, max_length=4)
 
 
 class QuestionIntent(BaseModel):
@@ -298,6 +299,7 @@ def create_agent_graph(
         if not any(point.promedio_curso is not None for point in trend):
             uncertainty += " La tendencia no incluye fechas con la muestra mínima requerida."
 
+        tool = state.get("tool") or "obtener_indicadores_curso"
         return {
             "respuesta": AgentAnswer(
                 respuesta=response,
@@ -308,6 +310,7 @@ def create_agent_graph(
                 ],
                 recomendaciones=recommendations,
                 incertidumbre=uncertainty,
+                herramientas=[tool],
             )
         }
 

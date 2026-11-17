@@ -6,6 +6,7 @@ using System.Text.Json;
 using Uta.Middleware.Application.DTOs;
 using Uta.Middleware.Application.DTOs.Moodle;
 using Uta.Middleware.Application.Interfaces;
+using Uta.Middleware.Application.Moodle;
 using Uta.Middleware.Infrastructure.Moodle;
 using Uta.MoodleIntegration.WebApi.Data;
 using Uta.MoodleIntegration.WebApi.Services;
@@ -38,9 +39,7 @@ public sealed class InternalMoodleController(
             var course = await client.GetCourseAsync(courseId, cancellationToken);
             var enrolledUsers = (await client.GetEnrolledUsersAsync(courseId, cancellationToken)).ToArray();
             var studentIds = enrolledUsers
-                .Where(user => user.Roles.Any(role =>
-                    role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
-                    || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)))
+                .Where(MoodleParticipantRoles.IsStudent)
                 .Select(user => user.Id);
             var grades = await client.GetGradesByCourseAsync(courseId, studentIds, cancellationToken);
             var contents = await client.GetCourseContentsAsync(courseId, cancellationToken);

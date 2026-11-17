@@ -7,6 +7,7 @@ using Uta.AcademicAnalysis.WebApi.Analysis;
 using Uta.AcademicAnalysis.WebApi.Data;
 using Uta.Middleware.Application.DTOs;
 using Uta.Middleware.Application.DTOs.Moodle;
+using Uta.Middleware.Application.Moodle;
 
 namespace Uta.AcademicAnalysis.WebApi.Controllers;
 
@@ -83,6 +84,36 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
             (int)Math.Ceiling(students.Count / (double)pageSize)));
     }
 
+    [HttpGet("courses/{courseId:int}/teachers")]
+    public async Task<ActionResult<IReadOnlyCollection<DocenteCursoDto>>> GetTeachers(
+        int courseId,
+        CancellationToken cancellationToken)
+    {
+        if (!CanAccessCourse(courseId))
+        {
+            return Forbid();
+        }
+
+        var snapshot = await GetSnapshotAsync(courseId, cancellationToken);
+        if (snapshot is null)
+        {
+            return NotFound();
+        }
+
+        var teachers = snapshot.EnrolledUsers
+            .Where(MoodleParticipantRoles.IsTeacher)
+            .GroupBy(user => user.Id)
+            .Select(group => group.First())
+            .OrderBy(user => user.FullName, StringComparer.CurrentCulture)
+            .Select(user => new DocenteCursoDto(
+                user.Id,
+                user.FullName,
+                user.Email,
+                user.Roles.Select(role => role.ShortName).FirstOrDefault(MoodleParticipantRoles.IsTeacher) ?? "docente"))
+            .ToArray();
+        return Ok(teachers);
+    }
+
     [HttpGet("courses/{courseId:int}/indicators")]
     public async Task<ActionResult<IndicadoresCursoDto>> GetIndicators(
         int courseId,
@@ -117,9 +148,7 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
         var snapshot = await GetSnapshotAsync(courseId, cancellationToken);
         var student = snapshot?.EnrolledUsers.FirstOrDefault(user =>
             user.Id == studentId
-            && user.Roles.Any(role =>
-                role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
-                || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)));
+            && MoodleParticipantRoles.IsStudent(user));
         if (snapshot is null || student is null)
         {
             return NotFound();
@@ -265,9 +294,7 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
         if (request.EstudianteId is { } requestedStudentId
             && snapshot.EnrolledUsers.All(user =>
                 user.Id != requestedStudentId
-                || !user.Roles.Any(role =>
-                    role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
-                    || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase))))
+                || !MoodleParticipantRoles.IsStudent(user)))
         {
             return NotFound();
         }
@@ -280,13 +307,13 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
             .SingleAsync(cancellationToken);
         var actor = User.Identity?.Name ?? User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "docente";
 
-        var created = request.EstudianteId is { } studentId
+        var outcome = request.EstudianteId is { } studentId
             ? await GenerateStudentRecommendationsAsync(
                 snapshot, studentId, sourceEventId, request.Umbral, actor, cancellationToken)
             : await GenerateGroupRecommendationsAsync(
-                courseId, analysis, sourceEventId, request.Umbral, actor, cancellationToken);
+                snapshot, analysis, sourceEventId, request.Umbral, actor, cancellationToken);
 
-        if (created > 0)
+        if (outcome.Created > 0)
         {
             await dbContext.SaveChangesAsync(cancellationToken);
         }
@@ -297,11 +324,15 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
             .OrderBy(item => item.ActivityName)
             .ToListAsync(cancellationToken);
         return Ok(new ResultadoGenerarRecomendacionesDto(
-            created, records.Select(ToRecommendationDto).ToArray()));
+            outcome.Created,
+            records.Select(ToRecommendationDto).ToArray(),
+            outcome.Created == 0 ? outcome.Motivo : null));
     }
 
-    private async Task<int> GenerateGroupRecommendationsAsync(
-        int courseId,
+    private readonly record struct RecommendationGeneration(int Created, string? Motivo);
+
+    private async Task<RecommendationGeneration> GenerateGroupRecommendationsAsync(
+        AcademicCourseSnapshot snapshot,
         AnalisisGrupalDto analysis,
         Guid sourceEventId,
         decimal threshold,
@@ -309,8 +340,23 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
         CancellationToken cancellationToken)
     {
         var created = 0;
-        foreach (var activity in analysis.Actividades.Where(item => item.BajoUmbral && item.Promedio.HasValue))
+        var alreadyPresent = 0;
+        var insufficient = 0;
+        var belowWithSample = 0;
+        foreach (var activity in analysis.Actividades)
         {
+            if (activity.DatosInsuficientes || !activity.Promedio.HasValue)
+            {
+                insufficient++;
+                continue;
+            }
+
+            if (!activity.BajoUmbral)
+            {
+                continue;
+            }
+
+            belowWithSample++;
             var exists = await dbContext.Recommendations.AnyAsync(
                 item => item.SourceEventId == sourceEventId
                     && item.ActivityId == activity.ItemId
@@ -318,25 +364,29 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
                 cancellationToken);
             if (exists)
             {
+                alreadyPresent++;
                 continue;
             }
 
             var average = activity.Promedio!.Value;
+            var evidenceAtUtc = LatestGradeEvidenceUtc(snapshot, activity.ItemId);
             dbContext.Recommendations.Add(new AcademicRecommendationRecord
             {
                 Id = Guid.NewGuid(),
-                MoodleCourseId = courseId,
+                MoodleCourseId = snapshot.MoodleCourseId,
                 ActivityId = activity.ItemId,
                 ActivityName = activity.Nombre,
                 Average = average,
                 GradeCount = activity.NumCalificaciones,
                 Threshold = threshold,
-                RecommendationText =
-                    $"Revisar la estrategia de enseñanza de «{activity.Nombre}» y considerar "
-                    + "una actividad de refuerzo con retroalimentación antes de la siguiente evaluación.",
-                Justification =
-                    $"Promedio {average:0.00}/10 con {activity.NumCalificaciones} calificaciones; "
-                    + $"el umbral acordado es {threshold:0.##}/10.",
+                EvidenceAtUtc = evidenceAtUtc,
+                RecommendationText = RecommendationText.Action(activity.Nombre),
+                Justification = RecommendationText.Justification(
+                    activity.Nombre,
+                    average,
+                    activity.NumCalificaciones,
+                    threshold,
+                    evidenceAtUtc),
                 IndicatorsJson = JsonSerializer.Serialize(new
                 {
                     activityId = activity.ItemId,
@@ -354,10 +404,52 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
             created++;
         }
 
-        return created;
+        return new RecommendationGeneration(
+            created,
+            ExplainGroupGap(analysis, created, alreadyPresent, insufficient, belowWithSample));
     }
 
-    private async Task<int> GenerateStudentRecommendationsAsync(
+    internal static string? ExplainGroupGap(
+        AnalisisGrupalDto analysis,
+        int created,
+        int alreadyPresent,
+        int insufficient,
+        int belowWithSample)
+    {
+        if (created > 0)
+        {
+            return null;
+        }
+
+        if (alreadyPresent > 0)
+        {
+            return "No se generaron recomendaciones nuevas: las propuestas de este corte ya existen.";
+        }
+
+        if (analysis.Actividades.Count == 0)
+        {
+            return "No se generaron recomendaciones: el curso no tiene actividades calificables.";
+        }
+
+        if (insufficient == analysis.Actividades.Count)
+        {
+            return "No se generaron recomendaciones: todas las actividades tienen datos insuficientes "
+                + $"(menos de {analysis.MinimoCalificaciones} calificaciones) y no se concluye sobre ellas.";
+        }
+
+        if (belowWithSample == 0)
+        {
+            return insufficient > 0
+                ? "No se generaron recomendaciones: ninguna actividad con muestra suficiente está bajo el umbral "
+                    + $"de {analysis.UmbralBajo:0.##}/10. {insufficient} actividad(es) quedaron fuera por datos insuficientes."
+                : "No se generaron recomendaciones: ninguna actividad con muestra suficiente está bajo el umbral "
+                    + $"de {analysis.UmbralBajo:0.##}/10.";
+        }
+
+        return null;
+    }
+
+    private async Task<RecommendationGeneration> GenerateStudentRecommendationsAsync(
         AcademicCourseSnapshot snapshot,
         int studentId,
         Guid sourceEventId,
@@ -367,12 +459,12 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
     {
         var student = snapshot.EnrolledUsers.FirstOrDefault(user =>
             user.Id == studentId
-            && user.Roles.Any(role =>
-                role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
-                || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)));
+            && MoodleParticipantRoles.IsStudent(user));
         if (student is null)
         {
-            return 0;
+            return new RecommendationGeneration(
+                0,
+                "No se generaron recomendaciones: el estudiante no está matriculado en el curso.");
         }
 
         var gradesByItem = snapshot.Grades.Grades
@@ -384,6 +476,9 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
                 && !item.ItemType.Equals("course", StringComparison.OrdinalIgnoreCase)
                 && !item.ItemType.Equals("category", StringComparison.OrdinalIgnoreCase));
         var created = 0;
+        var alreadyPresent = 0;
+        var withValue = 0;
+        var belowThreshold = 0;
 
         foreach (var item in eligibleItems)
         {
@@ -397,11 +492,14 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
                 continue;
             }
 
+            withValue++;
             var score = decimal.Round((rawGrade - item.GradeMin) * 10m / (item.GradeMax - item.GradeMin), 2);
             if (score >= threshold)
             {
                 continue;
             }
+
+            belowThreshold++;
 
             var exists = await dbContext.Recommendations.AnyAsync(
                 recommendation => recommendation.SourceEventId == sourceEventId
@@ -410,6 +508,7 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
                 cancellationToken);
             if (exists)
             {
+                alreadyPresent++;
                 continue;
             }
 
@@ -459,7 +558,55 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
             created++;
         }
 
-        return created;
+        return new RecommendationGeneration(created, ExplainStudentGap(
+            created, alreadyPresent, withValue, belowThreshold, threshold));
+    }
+
+    private static string? ExplainStudentGap(
+        int created,
+        int alreadyPresent,
+        int withValue,
+        int belowThreshold,
+        decimal threshold)
+    {
+        if (created > 0)
+        {
+            return null;
+        }
+
+        if (alreadyPresent > 0)
+        {
+            return "No se generaron recomendaciones nuevas: las propuestas de este estudiante ya existen para el corte actual.";
+        }
+
+        if (withValue == 0)
+        {
+            return "No se generaron recomendaciones: no hay calificaciones con valor para este estudiante. No se usa una nota ausente como cero.";
+        }
+
+        if (belowThreshold == 0)
+        {
+            return "No se generaron recomendaciones: ninguna calificación del estudiante está bajo el umbral "
+                + $"de {threshold:0.##}/10.";
+        }
+
+        return null;
+    }
+
+    private static DateTime? LatestGradeEvidenceUtc(AcademicCourseSnapshot snapshot, int itemId)
+    {
+        DateTime? latest = null;
+        foreach (var grade in snapshot.Grades.Grades.Where(grade => grade.ItemId == itemId))
+        {
+            var candidate = ParseRecommendationEvidenceDate(grade.DateGraded)
+                ?? ParseRecommendationEvidenceDate(grade.DateSubmitted);
+            if (candidate.HasValue && (latest is null || candidate > latest))
+            {
+                latest = candidate;
+            }
+        }
+
+        return latest;
     }
 
     private static string TruncateActor(string actor) =>
@@ -494,7 +641,7 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
         }
 
         var requestedState = request.Estado?.Trim();
-        if (requestedState is not ("Aceptada" or "Ajustada" or "Descartada"))
+        if (!RecommendationText.IsReviewState(requestedState))
         {
             return BadRequest("El estado debe ser Aceptada, Ajustada o Descartada.");
         }
@@ -660,9 +807,7 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
         string? status)
     {
         var users = snapshot.EnrolledUsers
-            .Where(user => user.Roles.Any(role =>
-                role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
-                || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)))
+            .Where(MoodleParticipantRoles.IsStudent)
             .GroupBy(user => user.Id)
             .Select(group => group.First())
             .ToArray();
@@ -731,9 +876,7 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
     {
         var itemsById = snapshot.Grades.Items.ToDictionary(item => item.Id);
         var students = snapshot.EnrolledUsers
-            .Where(user => user.Roles.Any(role =>
-                role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
-                || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)))
+            .Where(MoodleParticipantRoles.IsStudent)
             .Select(user => user.Id)
             .Distinct()
             .ToHashSet();

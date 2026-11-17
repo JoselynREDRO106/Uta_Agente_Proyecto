@@ -7,12 +7,12 @@
   position: fixed;
   z-index: 2;
   display: flex;
-  width: 258px;
+  width: 272px;
   height: 100vh;
   flex-direction: column;
   padding: 28px 18px 18px;
-  border-right: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--navy);
+  color: #e8eef8;
 }
 
 .brand,
@@ -25,6 +25,7 @@
 
 .brand {
   padding: 2px 6px 34px;
+  color: white;
 }
 
 .brand__mark {
@@ -45,26 +46,30 @@
 .brand strong {
   display: block;
   font-family: Manrope, sans-serif;
-  font-size: 16px;
+  font-size: 1.15rem;
   font-weight: 800;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.4px;
 }
 
 .brand small {
   display: block;
   margin-top: 2px;
-  color: #a0a9ba;
-  font-size: 8px;
+  color: #b7c3d6;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 1.15px;
+  letter-spacing: 0.08em;
 }
 
 .sidebar__caption,
 .eyebrow {
   color: #9aa5b7;
-  font-size: 10px;
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 1.25px;
+  letter-spacing: 0.08em;
+}
+
+.sidebar__caption {
+  color: #9eb0c9;
 }
 
 .sidebar__caption {
@@ -80,19 +85,19 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 43px;
+  min-height: 48px;
   padding: 0 12px;
-  border-radius: 9px;
-  color: #64728a;
-  font-size: 13px;
+  border-radius: 10px;
+  color: #d5deeb;
+  font-size: 1.02rem;
   font-weight: 600;
   transition: background 150ms ease, color 150ms ease;
 }
 
 .nav-link:hover,
 .nav-link.is-active {
-  background: #f0f3ff;
-  color: #4562db;
+  background: #ffffff18;
+  color: white;
 }
 
 .nav-link__icon {
@@ -105,7 +110,7 @@
   gap: 10px;
   margin-top: auto;
   padding: 15px 4px 3px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid #ffffff22;
 }
 
 .profile-avatar,
@@ -128,41 +133,42 @@
 }
 
 .sidebar__footer strong {
-  font-size: 12px;
+  font-size: 0.95rem;
 }
 
 .sidebar__footer small {
   margin-top: 3px;
-  color: var(--muted);
-  font-size: 10px;
+  color: #b7c3d6;
+  font-size: 0.82rem;
 }
 
 .profile-menu {
   margin-left: auto;
-  color: var(--muted);
+  color: #d5deeb;
   font-weight: 700;
   border: 0;
   background: transparent;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 0.9rem;
 }
 
 .main-panel {
-  width: calc(100% - 258px);
+  width: calc(100% - 272px);
   min-height: 100vh;
-  margin-left: 258px;
+  margin-left: 272px;
+  background: #eef2f8;
 }
 
 .topbar {
   display: flex;
-  height: 70px;
+  height: 76px;
   align-items: center;
   justify-content: space-between;
   padding: 0 48px;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
-  color: #8390a5;
-  font-size: 12px;
+  color: #5d6b82;
+  font-size: 0.95rem;
 }
 
 .breadcrumb-separator {
@@ -276,7 +282,7 @@
   margin: 7px 0 6px;
   color: var(--ink);
   font-family: Manrope, 'Segoe UI', sans-serif;
-  font-size: clamp(27px, 3vw, 34px);
+  font-size: clamp(2rem, 3vw, 2.45rem);
   font-weight: 800;
   letter-spacing: -1.3px;
   line-height: 1.2;
@@ -284,21 +290,21 @@
 
 .muted {
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 1rem;
+  line-height: 1.55;
 }
 
 .button {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 46px;
   align-items: center;
   justify-content: center;
   gap: 9px;
-  padding: 0 15px;
+  padding: 0 18px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 1rem;
   font-weight: 700;
   transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
@@ -335,17 +341,14 @@
 }
 
 .course-sync-form label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .course-sync-form input {
-  width: 125px;
-  min-height: 40px;
+  width: 150px;
+  min-height: 46px;
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -484,10 +487,10 @@
 
 .content-card {
   overflow: hidden;
-  border: 1px solid #edf0f5;
-  border-radius: 12px;
+  border: 1px solid #e6ebf3;
+  border-radius: 16px;
   background: var(--surface);
-  box-shadow: 0 4px 16px #26395d08;
+  box-shadow: 0 10px 28px #1a2b4a10;
 }
 
 .course-workspace {
@@ -521,13 +524,13 @@
 .course-workspace__link,
 .course-workspace__back {
   display: flex;
-  min-height: 39px;
+  min-height: 44px;
   align-items: center;
   gap: 10px;
   padding: 0 10px;
   border-radius: 8px;
   color: #64728a;
-  font-size: 11px;
+  font-size: 0.98rem;
   font-weight: 600;
 }
 
@@ -653,22 +656,22 @@
   margin: 0 0 3px;
   color: var(--ink);
   font-family: Manrope, sans-serif;
-  font-size: 15px;
+  font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: -0.3px;
 }
 
 .card-heading .muted {
   margin: 0;
-  font-size: 11px;
+  font-size: 0.95rem;
 }
 
 .count-pill {
-  padding: 6px 9px;
+  padding: 7px 12px;
   border-radius: 20px;
-  background: #f1f4fa;
-  color: #77859b;
-  font-size: 10px;
+  background: #eef2f8;
+  color: #5d6d84;
+  font-size: 0.85rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -689,26 +692,26 @@ thead {
 }
 
 th {
-  height: 40px;
+  height: 48px;
   padding: 0 17px;
-  color: #8d99ac;
-  font-size: 9px;
+  color: #6d7c92;
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.75px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 td {
-  height: 67px;
-  padding: 9px 17px;
+  height: 72px;
+  padding: 12px 17px;
   border-top: 1px solid #f0f2f7;
-  color: #526078;
-  font-size: 11px;
+  color: #31445f;
+  font-size: 1rem;
 }
 
 td strong {
-  color: #263650;
-  font-size: 11px;
+  color: #1c2c44;
+  font-size: 1.02rem;
   font-weight: 700;
 }
 
@@ -1284,8 +1287,8 @@ td strong {
 .login-message p {
   max-width: 390px;
   color: #c0cae0;
-  font-size: 14px;
-  line-height: 1.8;
+  font-size: 1.05rem;
+  line-height: 1.7;
 }
 
 .login-aside__footer {
@@ -1309,7 +1312,7 @@ td strong {
   margin: 10px 0 4px;
   color: #1d2b45;
   font-family: Manrope, sans-serif;
-  font-size: 29px;
+  font-size: 2rem;
   font-weight: 800;
   letter-spacing: -1px;
 }
@@ -1464,9 +1467,9 @@ td strong {
   }
 
   .nav-link {
-    min-height: 36px;
-    padding: 0 10px;
-    font-size: 11px;
+    min-height: 44px;
+    padding: 0 12px;
+    font-size: 1rem;
   }
 
   .main-panel {
@@ -1479,9 +1482,9 @@ td strong {
   }
 
   .topbar {
-    height: 50px;
+    height: 60px;
     padding: 0 18px;
-    font-size: 10px;
+    font-size: 0.95rem;
   }
 
   .page-content {

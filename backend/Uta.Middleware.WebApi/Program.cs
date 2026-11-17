@@ -86,3 +86,5 @@ app.MapGet("/health/database", async (
 }).AllowAnonymous();
 
 app.Run();
+
+public partial class Program;

@@ -71,9 +71,7 @@ function RecommendationsPanel({ courseId }) {
       })
       setMessage(result.creadas
         ? `Se generaron ${result.creadas} propuestas justificadas${scope === 'student' ? ' para el estudiante' : ''}.`
-        : scope === 'student'
-          ? 'No hay calificaciones bajo el umbral para este estudiante.'
-          : 'No hay actividades con muestra suficiente bajo el umbral.')
+        : result.motivo || 'No se generaron recomendaciones.')
       await load()
     } catch (error) {
       setState((previous) => ({ ...previous, error: error.message }))
@@ -163,9 +161,7 @@ function RecommendationsPanel({ courseId }) {
               <h3>{item.actividad}</h3>
               <p>{item.texto}</p>
               <p className="muted">{item.justificacion}</p>
-              {item.estudiante && (
-                <p className="muted">Fecha de evidencia: {formatEvidenceDate(item.fechaEvidenciaUtc)}</p>
-              )}
+              <p className="muted">Fecha de evidencia: {formatEvidenceDate(item.fechaEvidenciaUtc)}</p>
             </div>
             <span className="count-pill">{item.estado}</span>
           </div>

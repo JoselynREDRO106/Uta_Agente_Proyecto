@@ -1,5 +1,6 @@
 using Uta.Middleware.Application.DTOs;
 using Uta.Middleware.Application.Interfaces;
+using Uta.Middleware.Application.Moodle;
 
 namespace Uta.Middleware.Application.UseCases;
 
@@ -29,9 +30,7 @@ public sealed class GestionarCursosUseCase(
             var users = await moodleHttpClient.GetEnrolledUsersAsync(courseId, cancellationToken);
             var grades = await moodleHttpClient.GetGradesByCourseAsync(
                 courseId, users
-                    .Where(user => user.Roles.Any(role =>
-                        role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
-                        || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)))
+                    .Where(MoodleParticipantRoles.IsStudent)
                     .Select(user => user.Id),
                 cancellationToken);
             await repository.SaveGradesAsync(

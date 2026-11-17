@@ -36,7 +36,12 @@ public sealed class AsistenteCursoController(
 
         if (!await CanAccessCourseAsync(courseId, cancellationToken))
         {
-            await RecordAuditAsync(courseId, "Denegado", cancellationToken);
+            await RecordAuditAsync(
+                courseId,
+                "ConsultaAgente",
+                "Denegado",
+                "Acceso al curso denegado. No se guardó el texto de la pregunta.",
+                cancellationToken);
             return Forbid();
         }
 
@@ -57,12 +62,33 @@ public sealed class AsistenteCursoController(
                 return NotFound();
             }
 
+            await RecordAuditAsync(
+                courseId,
+                "UsoHerramienta",
+                "Exito",
+                "Herramienta obtener_indicadores_curso. Solo lectura; no se guardaron datos identificables.",
+                cancellationToken);
+
             var groupAnalysis = await analysisQueries.GetGroupAnalysisAsync(
                 courseId, 6m, 7, GetBearerToken(), cancellationToken);
+            await RecordAuditAsync(
+                courseId,
+                "UsoHerramienta",
+                "Exito",
+                "Herramienta obtener_analisis_grupal. Solo lectura; no se guardaron datos identificables.",
+                cancellationToken);
             var answer = await academicAgent.AskAsync(
                 question, indicators, groupAnalysis, cancellationToken);
+            var tool = answer.Herramientas?.FirstOrDefault(item =>
+                    item is "obtener_indicadores_curso" or "obtener_analisis_grupal")
+                ?? "obtener_indicadores_curso";
 
-            await RecordAuditAsync(courseId, "Exito", cancellationToken);
+            await RecordAuditAsync(
+                courseId,
+                "ConsultaAgente",
+                "Exito",
+                $"Herramienta aplicada: {tool}. No se guardó el texto de la pregunta.",
+                cancellationToken);
             return Ok(new RespuestaAsistenteCursoDto(
                 answer.Respuesta,
                 answer.Hechos,
@@ -70,12 +96,18 @@ public sealed class AsistenteCursoController(
                 answer.Recomendaciones,
                 answer.Incertidumbre,
                 "Moodle",
-                indicators.UltimaSincronizacionUtc));
+                indicators.UltimaSincronizacionUtc,
+                answer.Herramientas));
         }
         catch (HttpRequestException exception)
         {
             logger.LogError(exception, "El agente académico no pudo responder para el curso {CourseId}.", courseId);
-            await RecordAuditAsync(courseId, "Error", cancellationToken);
+            await RecordAuditAsync(
+                courseId,
+                "ConsultaAgente",
+                "Error",
+                "La consulta no pudo completarse. No se guardó el texto de la pregunta.",
+                cancellationToken);
             return Problem(
                 title: "El agente académico no está disponible.",
                 statusCode: exception.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable
@@ -85,7 +117,12 @@ public sealed class AsistenteCursoController(
         catch (JsonException exception)
         {
             logger.LogError(exception, "El agente académico devolvió una respuesta inválida para el curso {CourseId}.", courseId);
-            await RecordAuditAsync(courseId, "Error", cancellationToken);
+            await RecordAuditAsync(
+                courseId,
+                "ConsultaAgente",
+                "Error",
+                "La consulta no pudo completarse. No se guardó el texto de la pregunta.",
+                cancellationToken);
             return Problem(
                 title: "El agente académico devolvió una respuesta inválida.",
                 statusCode: StatusCodes.Status502BadGateway);
@@ -121,14 +158,19 @@ public sealed class AsistenteCursoController(
             : null;
     }
 
-    private Task RecordAuditAsync(int courseId, string result, CancellationToken cancellationToken) =>
+    private Task RecordAuditAsync(
+        int courseId,
+        string eventType,
+        string result,
+        string detail,
+        CancellationToken cancellationToken) =>
         auditLog.RecordAsync(
             User.FindFirstValue(ClaimTypes.NameIdentifier),
             User.Identity?.Name ?? "Usuario",
             User.FindFirstValue(ClaimTypes.Role) ?? "Desconocido",
-            "ConsultaAgente",
+            eventType,
             courseId,
             result,
-            "Consulta agregada al agente; no se guardó el texto de la pregunta.",
+            detail,
             cancellationToken);
 }

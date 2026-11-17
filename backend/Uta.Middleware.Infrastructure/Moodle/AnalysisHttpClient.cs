@@ -52,6 +52,17 @@ public sealed class AnalysisHttpClient(
             cancellationToken);
     }
 
+    public Task<IReadOnlyCollection<DocenteCursoDto>> GetCourseTeachersAsync(
+        int courseId,
+        string? bearerToken,
+        CancellationToken cancellationToken = default) =>
+        SendAsync<IReadOnlyCollection<DocenteCursoDto>>(
+            HttpMethod.Get,
+            $"/api/analysis/courses/{courseId}/teachers",
+            null,
+            bearerToken,
+            cancellationToken);
+
     public async Task<IndicadoresCursoDto?> GetCourseIndicatorsAsync(
         int courseId,
         string? bearerToken,

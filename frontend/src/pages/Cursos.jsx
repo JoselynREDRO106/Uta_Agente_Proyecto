@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getCourseIndicators, getCourses, getCurrentUser, getHealth, syncMoodleCourse } from '../services/api.js'
+import {
+  createTeacherAccount,
+  getCourseIndicators,
+  getCourseTeachers,
+  getCourses,
+  getCurrentUser,
+  getHealth,
+  syncMoodleCourse,
+} from '../services/api.js'
 import { Link } from 'react-router-dom'
 
 function Cursos() {
@@ -13,6 +21,14 @@ function Cursos() {
   const [courseId, setCourseId] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState('')
+  const [selectedCourseId, setSelectedCourseId] = useState('')
+  const [teachers, setTeachers] = useState([])
+  const [teachersLoading, setTeachersLoading] = useState(false)
+  const [teacherError, setTeacherError] = useState('')
+  const [teacherEmail, setTeacherEmail] = useState('')
+  const [teacherPassword, setTeacherPassword] = useState('')
+  const [accountMessage, setAccountMessage] = useState('')
+  const [creatingAccount, setCreatingAccount] = useState(false)
 
   const loadCourses = useCallback(async () => {
     setCoursesLoading(true)
@@ -87,6 +103,48 @@ function Cursos() {
     }
   }, [courses, coursesLoading, courseIdsKey, isTeacher])
 
+  useEffect(() => {
+    if (!isAdministrator || !selectedCourseId) return undefined
+    let active = true
+    setTeachersLoading(true)
+    setTeacherError('')
+    setTeachers([])
+    setTeacherEmail('')
+    getCourseTeachers(selectedCourseId)
+      .then((result) => {
+        if (active) setTeachers(result)
+      })
+      .catch((error) => {
+        if (active) setTeacherError(error.message)
+      })
+      .finally(() => {
+        if (active) setTeachersLoading(false)
+      })
+    return () => { active = false }
+  }, [isAdministrator, selectedCourseId])
+
+  async function handleCreateTeacher(event) {
+    event.preventDefault()
+    const teacher = teachers.find((item) => item.email === teacherEmail)
+    if (!teacher) return
+    setCreatingAccount(true)
+    setAccountMessage('')
+    try {
+      await createTeacherAccount({
+        nombre: teacher.nombre,
+        email: teacher.email,
+        password: teacherPassword,
+        cursosMoodle: [Number(selectedCourseId)],
+      })
+      setAccountMessage(`Cuenta creada para ${teacher.nombre}. Ese docente debe iniciar sesión para ver el curso.`)
+      setTeacherPassword('')
+    } catch (error) {
+      setAccountMessage(error.message)
+    } finally {
+      setCreatingAccount(false)
+    }
+  }
+
   async function handleSync(event) {
     event.preventDefault()
     setSyncMessage('')
@@ -95,7 +153,7 @@ function Cursos() {
 
     try {
       const course = await syncMoodleCourse(courseId)
-      setSyncMessage(`Curso "${course.name}" sincronizado correctamente.`)
+      setSyncMessage(`Curso "${course.name}" sincronizado. Estudiantes y docentes quedan disponibles al abrir el curso.`)
       setCourseId('')
       await loadCourses()
     } catch (error) {
@@ -123,7 +181,9 @@ function Cursos() {
             id="moodle-course-id"
             min="1"
             onChange={(event) => setCourseId(event.target.value)}
+            placeholder="ID de Moodle"
             required
+            title="ID del curso en Moodle"
             type="number"
             value={courseId}
           />
@@ -225,6 +285,62 @@ function Cursos() {
           </table>
         </div>
       </section>}
+
+      {isAdministrator && (
+        <section className="content-card" style={{ marginTop: 16 }}>
+          <div className="card-heading">
+            <div>
+              <h2>Cuenta de docente</h2>
+              <p className="muted">Elige un curso de la tabla. Los docentes aparecen después de sincronizar ese curso desde Moodle.</p>
+            </div>
+          </div>
+          <form className="feature-form" onSubmit={handleCreateTeacher}>
+            <label htmlFor="teacher-course">Curso sincronizado</label>
+            <select
+              id="teacher-course"
+              onChange={(event) => setSelectedCourseId(event.target.value)}
+              value={selectedCourseId}
+            >
+              <option value="">Selecciona un curso</option>
+              {courses.map((course) => (
+                <option key={course.id} value={course.id}>{course.name} ({course.id})</option>
+              ))}
+            </select>
+            <label htmlFor="teacher-email">Docente en Moodle</label>
+            <select
+              id="teacher-email"
+              disabled={!selectedCourseId || teachersLoading || teachers.length === 0}
+              onChange={(event) => setTeacherEmail(event.target.value)}
+              value={teacherEmail}
+            >
+              <option value="">{teachersLoading ? 'Buscando docentes…' : 'Selecciona un docente'}</option>
+              {teachers.filter((teacher) => teacher.email).map((teacher) => (
+                <option key={teacher.id} value={teacher.email}>{teacher.nombre} · {teacher.email}</option>
+              ))}
+            </select>
+            <label htmlFor="teacher-password">Contraseña inicial (mínimo 12 caracteres)</label>
+            <input
+              id="teacher-password"
+              minLength={12}
+              onChange={(event) => setTeacherPassword(event.target.value)}
+              type="password"
+              value={teacherPassword}
+            />
+            <button
+              className="button button--primary"
+              disabled={creatingAccount || !teacherEmail || teacherPassword.length < 12}
+              type="submit"
+            >
+              {creatingAccount ? 'Creando cuenta…' : 'Crear cuenta docente'}
+            </button>
+          </form>
+          {teacherError && <p className="course-message course-message--error" role="alert">{teacherError}</p>}
+          {!teacherError && selectedCourseId && !teachersLoading && teachers.length === 0 && (
+            <p className="muted">Ese curso no tiene docentes en la última sincronización. Escribe su ID arriba y pulsa Sincronizar curso.</p>
+          )}
+          {accountMessage && <p className="course-message" role="status">{accountMessage}</p>}
+        </section>
+      )}
 
       <p className="page-footnote">
         {isTeacher

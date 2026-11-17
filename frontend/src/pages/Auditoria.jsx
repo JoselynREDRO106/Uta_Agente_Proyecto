@@ -70,6 +70,7 @@ function Auditoria() {
             <option value="">Todos</option>
             <option value="Sincronizacion">Sincronización</option>
             <option value="ConsultaAgente">Consulta al agente</option>
+            <option value="UsoHerramienta">Uso de herramienta</option>
             <option value="AnalisisGrupal">Análisis grupal</option>
             <option value="RecomendacionGenerada">Recomendación generada</option>
             <option value="EstadoRecomendacionActualizado">Estado de recomendación</option>

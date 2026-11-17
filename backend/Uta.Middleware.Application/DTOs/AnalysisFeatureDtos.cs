@@ -49,7 +49,8 @@ public sealed record SolicitudGenerarRecomendacionesDto(
 
 public sealed record ResultadoGenerarRecomendacionesDto(
     int Creadas,
-    IReadOnlyCollection<RecomendacionDto> Recomendaciones);
+    IReadOnlyCollection<RecomendacionDto> Recomendaciones,
+    string? Motivo = null);
 
 public sealed record ActualizarEstadoRecomendacionDto(
     string Estado,
@@ -84,7 +85,8 @@ public sealed record RespuestaAgenteCursoDto(
     IReadOnlyCollection<string> Hechos,
     IReadOnlyCollection<string> Inferencias,
     IReadOnlyCollection<string> Recomendaciones,
-    string Incertidumbre);
+    string Incertidumbre,
+    IReadOnlyCollection<string>? Herramientas = null);
 
 public sealed record RespuestaAsistenteCursoDto(
     string Respuesta,
@@ -93,7 +95,8 @@ public sealed record RespuestaAsistenteCursoDto(
     IReadOnlyCollection<string> Recomendaciones,
     string Incertidumbre,
     string Fuente,
-    DateTime? UltimaSincronizacionUtc);
+    DateTime? UltimaSincronizacionUtc,
+    IReadOnlyCollection<string>? Herramientas = null);
 
 public sealed record SolicitudRecomendacionesGatewayDto(
     decimal Umbral = 6m,

@@ -228,6 +228,12 @@ Rutas de la aplicación:
 - `/cursos`
 - `/cursos/:id`
 - `/cursos/:courseId/estudiantes/:studentId` (seguimiento individual, HU-08)
+- `/cursos/:id/alertas` y `/cursos/:id/alertas/reglas` (HU-09)
+- `/cursos/:id/analisis` (HU-10)
+- `/cursos/:id/asistente` (HU-11)
+- `/cursos/:id/recomendaciones` (HU-12)
+- `/cursos/:id/informes` (HU-13)
+- `/auditoria` (HU-14, solo Administrador técnico)
 
 Las rutas académicas requieren una sesión válida. El listado de cursos y la vista de curso consultan la API; el dashboard presenta indicadores normalizados a escala 0–100 y estados de matrícula. No se asigna cero a una calificación ausente.
 
