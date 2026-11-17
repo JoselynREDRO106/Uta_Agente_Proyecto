@@ -69,7 +69,7 @@ Esas dos figuras salen de PlantUML. Los diagramas de clases y de secuencia de ca
 | ACADEMIC_RECOMMENDATION | EduMonitorAnalysis | num_calificaciones | INT | Muestra; debe ser mayor que cero. |
 | ACADEMIC_RECOMMENDATION | EduMonitorAnalysis | umbral | DECIMAL(6,2) | Umbral con el que se detectó el resultado bajo. |
 | ACADEMIC_RECOMMENDATION | EduMonitorAnalysis | texto | NVARCHAR(1000) | Acción concreta propuesta. |
-| ACADEMIC_RECOMMENDATION | EduMonitorAnalysis | justificacion | NVARCHAR(1000) | Indicadores que la sustentan. |
+| ACADEMIC_RECOMMENDATION | EduMonitorAnalysis | justificacion | NVARCHAR(1000) | Indicadores que la sustentan: valor, actividad y fecha de evidencia, o el aviso de que Moodle no envió fecha. |
 | ACADEMIC_RECOMMENDATION | EduMonitorAnalysis | indicadores_json | NVARCHAR(MAX) | Evidencia agregada. |
 | ACADEMIC_RECOMMENDATION | EduMonitorAnalysis | estado | NVARCHAR(20) | `Propuesta`, `Aceptada`, `Ajustada` o `Descartada`. |
 | ACADEMIC_RECOMMENDATION | EduMonitorAnalysis | source_event_id | UNIQUEIDENTIFIER | Evento de origen. Único junto con la actividad. |
@@ -261,7 +261,7 @@ La consulta no crea tablas `ConsultaAgente`, `RespuestaAgente` ni `LlamadaHerram
 | LlamadaHerramienta | Estado de LangGraph, campo `tool` | `obtener_indicadores_curso` o `obtener_analisis_grupal`, ambas de solo lectura. |
 | RespuestaAgente | `AgentAnswer` y `RespuestaAsistenteCursoDto` | Respuesta, hechos, inferencias, recomendaciones, incertidumbre, fuente y fecha de sincronización. |
 
-El texto de la pregunta no se guarda. El evento queda en `AUDIT_LOG` con tipo `ConsultaAgente`, el usuario, la fecha y el resultado (`Exito`, `Error` o `Denegado`).
+El texto de la pregunta no se guarda. La consulta queda en `AUDIT_LOG` con tipo `ConsultaAgente` (usuario, fecha y resultado `Exito`, `Error` o `Denegado`). Cada lectura de datos queda además como `UsoHerramienta`, con el nombre `obtener_indicadores_curso` u `obtener_analisis_grupal`, sin copiar calificaciones ni la pregunta.
 
 ```mermaid
 classDiagram
@@ -313,13 +313,15 @@ sequenceDiagram
     else Curso autorizado
         MW->>AN: Indicadores y analisis grupal
         AN-->>MW: Hechos con fuente y fecha
+        MW->>AU: UsoHerramienta obtener_indicadores_curso, Exito
+        MW->>AU: UsoHerramienta obtener_analisis_grupal, Exito
         MW->>AG: Pregunta mas contexto, sin SQL
         AG->>AG: Clasificar intencion
         AG->>AG: Elegir herramienta de solo lectura
         AG->>LLM: Redactar con el contexto local
         LLM-->>AG: Texto
-        AG-->>MW: Hechos, inferencias, recomendaciones e incertidumbre
-        MW->>AU: ConsultaAgente, Exito, sin texto de la pregunta
+        AG-->>MW: Hechos, inferencias, recomendaciones, incertidumbre y herramienta
+        MW->>AU: ConsultaAgente, Exito, herramienta aplicada, sin texto de la pregunta
         MW-->>Docente: RespuestaAgente
     end
 ```
@@ -399,7 +401,7 @@ Entidad: `AUDIT_LOG` en `EduMonitor`. Amplía la bitácora `SINCRONIZACION_LOG` 
 
 Cada servicio que pasa por Middleware notifica el evento con usuario, rol, fecha, tipo, curso, resultado y un detalle corto. El detalle lo escribe el controlador. No se copian el encabezado `Authorization`, el token de Moodle ni la contraseña. En la consulta al agente el detalle dice de forma explícita que no se guardó la pregunta.
 
-Tipos que el listado acepta al filtrar: `Sincronizacion`, `ConsultaAgente`, `AnalisisGrupal`, `RecomendacionGenerada` y `EstadoRecomendacionActualizado`. Resultados permitidos: `Exito`, `Error` y `Denegado`.
+Tipos que el listado acepta al filtrar: `Sincronizacion`, `ConsultaAgente`, `UsoHerramienta`, `AnalisisGrupal`, `RecomendacionGenerada`, `EstadoRecomendacionActualizado`, `ReglasAlertaActualizadas`, `EstadoAlertaActualizado`, `InformeGenerado` e `InformeDescargado`. Resultados permitidos: `Exito`, `Error` y `Denegado`.
 
 Endpoint: `GET /api/auditoria?tipo&desdeUtc&hastaUtc&pagina&tamanoPagina`. Solo el rol Administrador técnico. Un docente recibe 403 antes de leer la tabla. `tamanoPagina` queda entre 1 y 100.
 

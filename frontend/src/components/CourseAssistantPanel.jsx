@@ -59,6 +59,9 @@ function CourseAssistantPanel({ courseId }) {
           <AnswerList title="Inferencias" items={state.answer.inferencias} />
           <AnswerList title="Recomendaciones propuestas" items={state.answer.recomendaciones} />
           <p><strong>Incertidumbre:</strong> {state.answer.incertidumbre}</p>
+          {state.answer.herramientas?.length > 0 && (
+            <p className="muted">Herramientas: {state.answer.herramientas.join(', ')}</p>
+          )}
           <p className="muted">Fuente: {state.answer.fuente} · Última sincronización: {state.answer.ultimaSincronizacionUtc ?? 'No disponible'}</p>
         </div>
       )}

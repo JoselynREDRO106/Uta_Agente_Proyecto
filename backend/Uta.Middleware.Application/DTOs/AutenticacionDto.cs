@@ -20,6 +20,12 @@ public sealed record UsuarioCreacionDto(
 
 public sealed record TokenDto(string AccessToken, DateTime ExpiresAtUtc, string Nombre, string Rol);
 
+public sealed record DocenteCursoDto(
+    int Id,
+    string Nombre,
+    string Email,
+    string RolMoodle);
+
 public sealed record EstudianteCursoDto(
     int MoodleId,
     string Nombre,

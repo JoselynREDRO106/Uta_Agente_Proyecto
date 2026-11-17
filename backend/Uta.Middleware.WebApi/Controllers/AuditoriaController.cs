@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Uta.Middleware.Application.Auditing;
 using Uta.Middleware.Application.DTOs;
 using Uta.Middleware.Application.Interfaces;
 
@@ -31,11 +32,7 @@ public sealed class AuditoriaController(IAuditLogRepository auditLog) : Controll
             return BadRequest("desdeUtc debe ser anterior o igual a hastaUtc.");
         }
 
-        if (tipo is not null
-            && tipo.Trim() is not ("Sincronizacion" or "ConsultaAgente"
-                or "AnalisisGrupal" or "RecomendacionGenerada"
-                or "EstadoRecomendacionActualizado" or "ReglasAlertaActualizadas"
-                or "EstadoAlertaActualizado" or "InformeGenerado" or "InformeDescargado"))
+        if (tipo is not null && !AuditEventTypes.Allowed.Contains(tipo.Trim()))
         {
             return BadRequest("El tipo de evento no es válido.");
         }

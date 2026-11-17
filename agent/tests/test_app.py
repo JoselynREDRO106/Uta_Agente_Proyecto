@@ -115,6 +115,7 @@ class AgentApiTests(unittest.TestCase):
         self.assertNotIn("Tarea B", answer.respuesta)
         self.assertTrue(any("Tarea B: datos insuficientes" in fact for fact in answer.hechos))
         self.assertTrue(any("no evidencia de su causa" in item for item in answer.inferencias))
+        self.assertEqual(answer.herramientas, ["obtener_analisis_grupal"])
 
     def test_sync_status_intent_does_not_return_last_distribution_band(self) -> None:
         answer = self.run_graph("sync_status")
@@ -149,7 +150,7 @@ class AgentApiTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(
                     set(response.json()),
-                    {"respuesta", "hechos", "inferencias", "recomendaciones", "incertidumbre"},
+                    {"respuesta", "hechos", "inferencias", "recomendaciones", "incertidumbre", "herramientas"},
                 )
                 self.assertIn("72.5", response.json()["respuesta"])
         finally:

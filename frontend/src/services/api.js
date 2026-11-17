@@ -38,7 +38,7 @@ async function requestJson(path, options, baseUrl = getApiUrl()) {
   if (!response.ok) {
     const message = typeof result === 'string'
       ? result
-      : result?.detail ?? result?.title ?? `La API respondió con HTTP ${response.status}.`
+      : result?.message ?? result?.detail ?? result?.title ?? `La API respondió con HTTP ${response.status}.`
     throw new Error(message)
   }
 
@@ -98,6 +98,23 @@ export function getCurrentUser() {
 
 export function hasSession() {
   return Boolean(sessionStorage.getItem(accessTokenKey))
+}
+
+export async function getCourseTeachers(courseId) {
+  const teachers = await requestJson(`/api/cursos/${encodeURIComponent(courseId)}/docentes`)
+  if (!Array.isArray(teachers)) {
+    throw new Error('La API devolvió una lista de docentes inválida.')
+  }
+
+  return teachers
+}
+
+export async function createTeacherAccount({ nombre, email, password, cursosMoodle }) {
+  return requestJson('/api/auth/usuarios', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, email, password, rol: 'Docente', cursosMoodle }),
+  }, identityUrl || getApiUrl())
 }
 
 export async function getCourseStudents(courseId, { search = '', status = '', page = 1, pageSize = 10 } = {}) {

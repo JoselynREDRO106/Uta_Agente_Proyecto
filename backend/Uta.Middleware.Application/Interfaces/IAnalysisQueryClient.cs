@@ -17,6 +17,11 @@ public interface IAnalysisQueryClient
         string? bearerToken,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyCollection<DocenteCursoDto>> GetCourseTeachersAsync(
+        int courseId,
+        string? bearerToken,
+        CancellationToken cancellationToken = default);
+
     Task<IndicadoresCursoDto?> GetCourseIndicatorsAsync(
         int courseId,
         string? bearerToken,

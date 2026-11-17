@@ -26,19 +26,39 @@ Documento de contexto para continuar el desarrollo del Sprint 2 de EduMonitor (A
 
 ## 3. Historias de usuario del Sprint 2
 
-| HU | Historia | Mockup | Responsable del código | Estado |
+Estado al 13/11/2026, después del cierre de los criterios que estaban a medias.
+
+| HU | Historia | Mockup | Estado del código | Pruebas |
 |---|---|---|---|---|
-| HU-08 | Seguimiento individual de un estudiante | M-07 | Joselyn (frontend y endpoint mínimo) | Implementada en rama; pendiente verificación y PR |
-| HU-09 | Reglas y alertas académicas | M-08, M-09 | Pendiente | Sin implementar (sin backend) |
-| HU-10 | Análisis grupal del curso | M-10 | Diego | Fusionada en `develop` (PR #13) |
-| HU-11 | Consulta al agente de IA | M-11 | Diego | Fusionada en `develop` (PR #13) |
-| HU-12 | Recomendaciones pedagógicas | M-12 | Diego | Fusionada en `develop` (PR #13) |
-| HU-13 | Informe del curso | M-13 | Pendiente | Sin implementar |
-| HU-14 | Registro de auditoría | M-14 | Diego | Fusionada en `develop` (PR #13) |
+| HU-08 | Seguimiento individual | M-07 | Completa (ficha y endpoint) | CP-08.1 a CP-08.4 aprobadas el 12/11 |
+| HU-09 | Reglas y alertas | M-08, M-09 | Completa | CP-09.1 a CP-09.5 aprobadas el 12/11 |
+| HU-10 | Análisis grupal | M-10 | Completa | Código listo; falta acta de ejecución en navegador |
+| HU-11 | Agente de IA | M-11 | Completa; la respuesta incluye la herramienta usada | Pruebas del agente en `agent/tests`; falta acta funcional con Ollama |
+| HU-12 | Recomendaciones | M-12 | Completa: la justificación grupal incluye actividad, valor y fecha; si no se genera nada, `motivo` explica datos insuficientes, umbral o propuestas ya existentes | Falta acta funcional |
+| HU-13 | Informe del curso | M-13 | Completa | CP-13.1 a CP-13.4 aprobadas el 12/11 |
+| HU-14 | Auditoría | M-14 | Completa: además de `ConsultaAgente` se registra `UsoHerramienta` (indicadores y análisis grupal), sin pregunta ni secretos | Falta acta funcional del filtro `UsoHerramienta` |
 
-Mockups en [docs/mockups/](./mockups).
+Mockups en [docs/mockups/](./mockups). Informe de resultados: [Informe_Sprint2_AcademIA.md](./Informe_Sprint2_AcademIA.md).
 
-## 4. Estado de HU-08 (rama `feature/joselyn-hu08-seguimiento-individual`)
+## 3.1 Qué se cerró el 13/11/2026
+
+- HU-12: `ResultadoGenerarRecomendacionesDto.Motivo`. La pantalla muestra ese texto cuando `creadas` es 0. La recomendación de curso guarda `fecha_evidencia_utc` y la fecha dentro de la justificación.
+- HU-14: `AsistenteCursoController` escribe dos eventos `UsoHerramienta` por consulta autorizada. El filtro de `/auditoria` acepta ese tipo.
+- El agente devuelve `herramientas` y la pantalla del asistente la muestra.
+- `docs/Contexto_Sprint2_Frontend.md` dejó de decir que HU-09 y HU-13 no existían.
+
+## 3.2 Si hay que retomar
+
+El acta de HU-10, HU-11, HU-12 y HU-14 quedó cerrada el 17/11/2026. No hace falta reimplementar esas historias.
+
+1. Para ver el código nuevo en caliente, reinicia Analysis (5030) y Middleware (5000) sin `--no-build`. El 17/11 no había servicios escuchando en esos puertos.
+2. La evidencia está en `docs/Pruebas_Funcionales_Sprint2.md`, sección 12. Para repetirla: `dotnet test backend/Uta.AcademicAnalysis.Tests` y, en `agent`, `python -m unittest tests.test_app`.
+3. No reimplementar HU-08, HU-09 ni HU-13: ya tienen acta del 12/11.
+4. `npm run lint` y `npm run build` en `frontend` no se corrieron el 17/11 porque `frontend/node_modules` no está instalado.
+
+## 4. Detalle histórico de HU-08
+
+La historia ya está en el código actual. Esta sección conserva el contrato que se implementó.
 
 **Backend**
 

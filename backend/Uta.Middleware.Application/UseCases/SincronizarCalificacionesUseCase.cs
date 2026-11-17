@@ -1,5 +1,6 @@
 using Uta.Middleware.Application.DTOs.Moodle;
 using Uta.Middleware.Application.Interfaces;
+using Uta.Middleware.Application.Moodle;
 using Uta.Middleware.Domain.Entities;
 
 namespace Uta.Middleware.Application.UseCases;
@@ -43,9 +44,7 @@ public class SincronizarCalificacionesUseCase : ISincronizarCalificacionesUseCas
         var users = await usersTask;
         var response = await _moodleHttpClient.GetGradesByCourseAsync(
             courseId, users
-                .Where(user => user.Roles.Any(role =>
-                    role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
-                    || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)))
+                .Where(MoodleParticipantRoles.IsStudent)
                 .Select(user => user.Id),
             cancellationToken);
 

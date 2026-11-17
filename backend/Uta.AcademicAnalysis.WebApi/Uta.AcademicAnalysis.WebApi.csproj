@@ -23,4 +23,8 @@
     <ProjectReference Include="..\Uta.Middleware.Application\Uta.Middleware.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Uta.AcademicAnalysis.Tests" />
+  </ItemGroup>
+
 </Project>

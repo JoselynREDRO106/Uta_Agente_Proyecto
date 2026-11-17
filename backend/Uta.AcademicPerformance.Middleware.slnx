@@ -6,4 +6,5 @@
   <Project Path="Uta.MoodleIntegration.WebApi/Uta.MoodleIntegration.WebApi.csproj" />
   <Project Path="Uta.AcademicAnalysis.WebApi/Uta.AcademicAnalysis.WebApi.csproj" />
   <Project Path="Uta.Identity.WebApi/Uta.Identity.WebApi.csproj" />
+  <Project Path="Uta.AcademicAnalysis.Tests/Uta.AcademicAnalysis.Tests.csproj" />
 </Solution>

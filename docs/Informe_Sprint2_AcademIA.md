@@ -108,18 +108,18 @@ AcademIA (EduMonitor) es un sistema inteligente de seguimiento y análisis del r
 
 **Planificación original.** El Sprint 2 se planificó el 04/11/2026 como un Sprint de **especificación y diseño**, sin código de producción: siete Historias de Usuario (HU-08 a HU-14), mockups M-07 a M-14, modelo de datos y diseños ampliados, y un plan de pruebas funcionales con matriz de trazabilidad (30 criterios y 30 casos).
 
-**Decisión del equipo.** Durante el Sprint el equipo decidió ir más allá del compromiso y **implementar** las historias, probarlas e informar los resultados. Este informe mantiene la planificación original (secciones 1 a 22) y agrega los resultados reales (secciones 23 a 27), indicando con claridad qué está implementado y verificado y qué permanece pendiente de evidencia.
+**Decisión del equipo.** Durante el Sprint el equipo decidió ir más allá del compromiso y **implementar** las historias, probarlas e informar los resultados. Este informe mantiene la planificación original (secciones 1 a 22) y agrega los resultados reales (secciones 23 a 27). El 17/11/2026 se ejecutaron los 17 casos de HU-10, HU-11, HU-12 y HU-14.
 
 **Incluye:**
 
 - Especificación y diseño de RF-06 a RF-12 (HU-08 a HU-14) y sus mockups M-07 a M-14.
 - Implementación de HU-08 (seguimiento individual), HU-09 (reglas y alertas) y HU-13 (informes) por Joselyn Redroban, y de HU-10, HU-11, HU-12 y HU-14 (análisis grupal, agente de IA, recomendaciones y auditoría) por Diego Curillo.
-- Ejecución de las pruebas funcionales de HU-08, HU-09 y HU-13 (13 casos).
+- Ejecución de las pruebas funcionales de HU-08, HU-09 y HU-13 (13 casos, 12/11/2026) y de HU-10, HU-11, HU-12 y HU-14 (17 casos, 17/11/2026).
+- Suite `backend/Uta.AcademicAnalysis.Tests` y las pruebas del agente en `agent/tests/test_app.py`.
 
 **No incluye:**
 
-- Ejecución de las pruebas funcionales de HU-10, HU-11, HU-12 y HU-14, que permanece pendiente de evidencia.
-- Pruebas automatizadas (unitarias o de integración), recorrido visual documentado con capturas y despliegue.
+- Recorrido visual documentado con capturas, nueva sincronización contra Moodle y llamada real a Ollama en la corrida del 17/11.
 - Planificación del Sprint 3.
 
 ## 1.4 Objetivos
@@ -152,7 +152,7 @@ No se identifica normativa externa específica aplicable. Se aplican los requeri
 | **Arquitectura de microservicios** | Identidad, Integración con Moodle, Análisis académico, Middleware y agente de IA como servicios independientes. | Sí |
 | **Servicios Web REST de Moodle** | Fuente de cursos, matriculados, calificaciones y estados de actividad. | Sí |
 | **Python / FastAPI** | Servicio del agente de IA expuesto como API (puerto 8010). | Sí (implementado por Diego Curillo) |
-| **LangGraph y Ollama** | Orquestación del agente y modelo local que favorece la privacidad (RNF-02). | Según el diseño técnico del agente; su verificación está pendiente (sección 24) |
+| **LangGraph y Ollama** | Orquestación del agente y modelo local que favorece la privacidad (RNF-02). | Sí. El 17/11 las pruebas del agente cubrieron la clasificación y el límite de URL; no se llamó a Ollama en esa corrida |
 
 ---
 
@@ -748,25 +748,25 @@ Las secciones 23 a 27 corresponden al cierre del Sprint 2 (04/11/2026 – 12/11/
 | Funcionalidad | Tarea | Estado |
 |---|---|---|
 | Mockup M-10 | TA-10.2 | Entregado |
-| Componente `GroupAnalysisPanel` en el dashboard del curso | — | Implementado (PR #13); pendiente prueba funcional |
-| Cálculo del análisis grupal en el servicio de Análisis | TA-10.3 | Implementado (PR #13); pendiente prueba funcional |
+| Componente `GroupAnalysisPanel` en el dashboard del curso | — | Implementado (PR #13) y probado el 17/11 (CP-10.1 a CP-10.4) |
+| Cálculo del análisis grupal en el servicio de Análisis | TA-10.3 | Implementado (PR #13) y probado el 17/11 (CP-10.1 a CP-10.4) |
 
 ## 23.4 HU-11 – Agente de IA
 
 | Funcionalidad | Tarea | Estado |
 |---|---|---|
 | Mockup M-11 | TA-11.2 | Entregado |
-| Componente `CourseAssistantPanel` | — | Implementado (PR #13); pendiente prueba funcional |
-| Servicio del agente (Python / FastAPI, puerto 8010) con herramientas de solo lectura | TA-11.3 | Implementado (PR #13); pendiente prueba funcional |
+| Componente `CourseAssistantPanel` | — | Implementado (PR #13) y probado el 17/11 (CP-11.2) |
+| Servicio del agente (Python / FastAPI, puerto 8010) con herramientas de solo lectura | TA-11.3 | Implementado (PR #13). CP-11.1, CP-11.3 y CP-11.5 aprobados por `agent/tests/test_app.py`; CP-11.4 respondió HTTP 403 |
 
-La verificación de los criterios CA-11.1 a CA-11.5 (en particular la ejecución local del modelo y el rechazo de cursos no autorizados) permanece pendiente de evidencia.
+Los criterios CA-11.1 a CA-11.5 quedaron aprobados el 17/11/2026. Esa corrida no llamó a Ollama: el clasificador y el límite de URL se comprobaron con las pruebas del agente.
 
 ## 23.5 HU-12 – Recomendaciones pedagógicas
 
 | Funcionalidad | Tarea | Estado |
 |---|---|---|
 | Mockup M-12 | TA-12.2 | Entregado |
-| Componente `RecommendationsPanel` y script `008_analysis_recommendations.sql` | TA-12.3 | Implementado (PR #13); pendiente prueba funcional |
+| Componente `RecommendationsPanel` y script `008_analysis_recommendations.sql` | TA-12.3 | Implementado (PR #13) y probado el 17/11 (CP-12.1 a CP-12.4) |
 
 ## 23.6 HU-13 – Informe del curso
 
@@ -790,7 +790,7 @@ La verificación de los criterios CA-11.1 a CA-11.5 (en particular la ejecución
 | Pantalla `Auditoria` (`/admin/auditoria`) y tabla `AUDIT_LOG` (script `007_sprint2_audit.sql`) | TA-14.3 | Implementadas (PR #13) |
 | Filtro ampliado con los eventos `ReglasAlertaActualizadas`, `EstadoAlertaActualizado`, `InformeGenerado` e `InformeDescargado`; el backend ya los acepta (antes respondía 400) | — | Corregido en la rama `fix/joselyn-auditoria-pruebas` |
 
-Los eventos de HU-09 y HU-13 se registraron en la auditoría durante las pruebas. La verificación de los criterios CA-14.1 a CA-14.4 de forma independiente permanece pendiente de evidencia.
+Los eventos de HU-09 y HU-13 se registraron en la auditoría durante las pruebas del 12/11. El 17/11, CA-14.1 a CA-14.4 quedaron aprobados: una consulta autorizada deja `ConsultaAgente` y dos `UsoHerramienta`, el detalle no guarda la pregunta y el rol Docente recibe 403.
 
 ## 23.8 Verificación de compilación y entorno
 
@@ -802,7 +802,7 @@ Los eventos de HU-09 y HU-13 se registraron en la auditoría durante las pruebas
 
 # 24. TESTING DE LAS HISTORIAS DE USUARIO
 
-La planificación define 30 casos de prueba funcional (uno por criterio de aceptación). En este Sprint se ejecutaron **13 casos** (HU-08, HU-09 y HU-13), todos **Aprobados**. Los 17 casos restantes (HU-10, HU-11, HU-12 y HU-14) permanecen **pendientes de evidencia**; no se consideran fallidos. El detalle completo de la ejecución se encuentra en `Pruebas_Funcionales_Sprint2.md`.
+La planificación define 30 casos de prueba funcional (uno por criterio de aceptación). Los **30** quedaron **Aprobados**: 13 el 12/11/2026 (HU-08, HU-09 y HU-13) y 17 el 17/11/2026 (HU-10, HU-11, HU-12 y HU-14). El detalle está en `Pruebas_Funcionales_Sprint2.md`. La corrida del 17/11 usó `dotnet test` (8 pruebas) y `python -m unittest tests.test_app` (6 pruebas). No repitió una sincronización contra Moodle ni una llamada a Ollama.
 
 **Método.** Se levantaron el servicio de Análisis (5030) y el Middleware (5000) con SQL Server Express y RabbitMQ locales, y se llamó a los endpoints con tokens JWT firmados con la clave de la sesión de pruebas (Docente con `course_id` 1001 y 9001, Docente B con `course_id` 999 y Administrador técnico). El frontend se verificó con `npm run build`. No se realizó un recorrido visual documentado en el navegador ni se tomaron capturas; no se ejecutó una suite automatizada. HU-08 y los casos 403 usaron el curso real 1001; HU-09 y HU-13 usaron un curso temporal (9001) con cuatro estudiantes sintéticos que fue eliminado al terminar.
 
@@ -829,19 +829,19 @@ La planificación define 30 casos de prueba funcional (uno por criterio de acept
 
 | Caso | Resultado |
 |---|---|
-| CP-10.1 a CP-10.4 | Pendiente de evidencia del equipo |
+| CP-10.1 a CP-10.4 | Aprobado el 17/11: orden por promedio, tendencia en escala 10, datos insuficientes al subir el mínimo, fuente Moodle y fecha de sincronización |
 
 ## 24.4 HU-11 – Agente de IA
 
 | Caso | Resultado |
 |---|---|
-| CP-11.1 a CP-11.5 | Pendiente de evidencia del equipo |
+| CP-11.1 a CP-11.5 | Aprobado el 17/11: hechos tomados del análisis, bloques separados, 403 si el docente no tiene el curso, y Ollama limitado a localhost o al host Docker permitido |
 
 ## 24.5 HU-12 – Recomendaciones
 
 | Caso | Resultado |
 |---|---|
-| CP-12.1 a CP-12.4 | Pendiente de evidencia del equipo |
+| CP-12.1 a CP-12.4 | Aprobado el 17/11: la propuesta nombra la actividad, la justificación incluye promedio y fecha, solo se aceptan Aceptada, Ajustada y Descartada, y sin muestra `creadas` queda en 0 |
 
 ## 24.6 HU-13 – Informe del curso
 
@@ -856,7 +856,7 @@ La planificación define 30 casos de prueba funcional (uno por criterio de acept
 
 | Caso | Resultado |
 |---|---|
-| CP-14.1 a CP-14.4 | Pendiente de evidencia del equipo. Evidencia parcial: durante las pruebas se registraron `ReglasAlertaActualizadas` (Éxito y Error), `EstadoAlertaActualizado`, `InformeGenerado` e `InformeDescargado`. |
+| CP-14.1 a CP-14.4 | Aprobado el 17/11: `ConsultaAgente` y dos `UsoHerramienta` con usuario y resultado, detalle sin pregunta ni secreto, filtro de 20 y HTTP 403 para Docente. El 12/11 ya se habían registrado `ReglasAlertaActualizadas`, `EstadoAlertaActualizado`, `InformeGenerado` e `InformeDescargado`. |
 
 ## 24.8 Defectos encontrados
 
@@ -989,7 +989,7 @@ La retrospectiva recoge los riesgos de la planificación y los hechos observados
 |---|---|---|---|
 | 1 | Plazo corto hasta la entrega del 10/11 | Sí | Se trabajó por historias en ramas independientes y se priorizó el código de HU-08, HU-09 y HU-13. |
 | 2 | Definiciones pendientes del Product Owner | Sí | El formato de descarga del informe (HTML imprimible) está pendiente de confirmar con el PO. |
-| 3 | Complejidad del agente de IA | **[Completar con el equipo]** | La verificación del agente permanece pendiente. |
+| 3 | Complejidad del agente de IA | Sí | El 17/11 se aprobaron CP-11.1 a CP-11.5 con pruebas del agente y un 403 real del middleware. No se llamó a Ollama en esa corrida. |
 | 4 | Inconsistencias entre historias, mockups, modelos y pruebas | Sí | Se detectó el filtro de auditoría desalineado con los eventos de HU-09 y HU-13 (D-02) y se corrigió. |
 | 5 | Resultados del Sprint 1 aún no consolidados | **[Completar con el equipo]** | — |
 | 6 | Datos reales de Moodle insuficientes | Sí | Se creó un curso temporal con cuatro estudiantes sintéticos para las pruebas de alertas e informes. |
@@ -1002,7 +1002,7 @@ La retrospectiva recoge los riesgos de la planificación y los hechos observados
 - Conflictos de integración entre las ramas de HU-13 y `develop` (`AnalysisDbContext.cs`, `App.jsx` y `DashboardCurso.jsx`), resueltos antes del merge.
 - Moodle envía `dateSubmitted = "1"` como marcador, lo que mostraba `01/01/1970` (D-01).
 - Las bases de datos locales debían crearse con los scripts `001` a `010`; algunas no existían en el SQL Server de ciertos equipos.
-- No hay pruebas automatizadas ni evidencia gráfica (capturas) de la ejecución.
+- El 17/11 se agregó la suite `Uta.AcademicAnalysis.Tests`. Esa corrida no incluye capturas del navegador.
 
 ## 26.2 Aspectos positivos del Sprint
 
@@ -1013,13 +1013,13 @@ La retrospectiva recoge los riesgos de la planificación y los hechos observados
 
 ## 26.3 Reflexiones del equipo
 
-El Sprint 2 pasó de un paquete de especificación y diseño a un incremento funcional: el docente puede consultar el seguimiento de un estudiante, configurar reglas y revisar alertas con su evidencia, y generar y descargar informes del curso; además, el equipo implementó el análisis grupal, el agente de IA, las recomendaciones y la auditoría. La principal enseñanza es que avanzar la implementación exige ampliar de manera explícita el plan de pruebas: las historias HU-10, HU-11, HU-12 y HU-14 requieren aún su verificación funcional. **[Completar con la reflexión del equipo.]**
+El Sprint 2 pasó de un paquete de especificación y diseño a un incremento funcional: el docente puede consultar el seguimiento de un estudiante, configurar reglas y revisar alertas con su evidencia, y generar y descargar informes del curso; además, el equipo implementó el análisis grupal, el agente de IA, las recomendaciones y la auditoría. El 17/11 esas cuatro historias quedaron con sus casos aprobados. **[Completar con la reflexión del equipo.]**
 
 ## 26.4 Mejoras propuestas
 
 | Propuesta | Objetivo |
 |---|---|
-| Ejecutar las pruebas funcionales de HU-10, HU-11, HU-12 y HU-14 y adjuntar capturas. | Cerrar la cobertura de los 30 casos de prueba. |
+| Adjuntar capturas del recorrido en navegador de HU-10, HU-11, HU-12 y HU-14. | Complementar la evidencia automática del 17/11. |
 | Incorporar pruebas automatizadas (unitarias y de integración) de las reglas de alerta y de autorización. | Garantizar resultados reproducibles (RNF-06). |
 | Confirmar con el Product Owner el formato de descarga del informe y los umbrales por defecto. | Evitar retrabajo en el Sprint 3. |
 | Insertar los diagramas actualizados de TE-01 y la presentación (TE-04) en la versión final. | Mantener la documentación alineada con lo implementado. |
@@ -1034,20 +1034,20 @@ El Sprint 2 pasó de un paquete de especificación y diseño a un incremento fun
 |---|---|---|---|
 | Historias de Usuario con diseño y mockup entregados | 7 | 7 (mockups M-07 a M-14 entregados) | 100 % |
 | Historias de Usuario implementadas e integradas en `develop` | 0 (no estaba en el alcance) | 7 (PR #13, #14, #15 y #16) | — |
-| Historias con pruebas funcionales ejecutadas y aprobadas | — | 3 (HU-08, HU-09 y HU-13) | 3 de 7 |
-| Puntos de historia con implementación verificada por pruebas | 39 SP | 18 SP (HU-08: 5, HU-09: 8, HU-13: 5) | 46 % |
+| Historias con pruebas funcionales ejecutadas y aprobadas | — | 7 (HU-08 a HU-14) | 7 de 7 |
+| Puntos de historia con implementación verificada por pruebas | 39 SP | 39 SP | 100 % |
 | Tareas completadas | 33 | **[Completar con el tablero]** | **[Completar]** |
 | Horas de trabajo | 50 h (capacidad neta 72 h) | **[Completar con los registros del equipo]** | **[Completar]** |
-| Criterios de aceptación | 30 | 13 verificados con prueba ejecutada | 43 % |
-| Casos de prueba exitosos | 30 | 13 aprobados, 0 fallidos y 17 pendientes | 43 % |
+| Criterios de aceptación | 30 | 30 verificados con prueba ejecutada | 100 % |
+| Casos de prueba exitosos | 30 | 30 aprobados, 0 fallidos y 0 pendientes | 100 % |
 | Defectos encontrados y corregidos | — | 2 encontrados, 2 corregidos | 100 % |
 
 *Tabla 12. Métricas del Sprint 2*
 
 ## 27.2 Análisis de cumplimiento
 
-El compromiso original (paquete de especificación y diseño) se cumplió en lo que respecta a los mockups M-07 a M-14 y a las historias definidas; los demás entregables (modelos, matriz de trazabilidad y presentación) dependen de las tareas de Luis Manobanda, Daniela Quispe y Diego Curillo, que deben confirmarse con el tablero. La ampliación voluntaria llevó a todas las historias a `develop`, pero solo 13 de los 30 casos de prueba cuentan con evidencia; los 17 restantes (HU-10, HU-11, HU-12 y HU-14) son la brecha principal. Los puntos y las horas reales deben completarse con el tablero Scrum.
+El compromiso original (paquete de especificación y diseño) se cumplió en lo que respecta a los mockups M-07 a M-14 y a las historias definidas; los demás entregables (modelos, matriz de trazabilidad y presentación) dependen de las tareas de Luis Manobanda, Daniela Quispe y Diego Curillo, que deben confirmarse con el tablero. La ampliación voluntaria llevó a todas las historias a `develop`. El 17/11/2026 los 30 casos de prueba quedaron aprobados. Los puntos y las horas reales deben completarse con el tablero Scrum.
 
 ## 27.3 Conclusión del Sprint 2
 
-El Sprint 2 superó el alcance planificado: además de la especificación y el diseño de RF-06 a RF-12, el equipo implementó las siete historias en React y .NET y verificó funcionalmente HU-08 (seguimiento individual), HU-09 (reglas y alertas) y HU-13 (informes) con 13 casos aprobados y dos defectos corregidos. Quedan como base para el Sprint 3 la verificación de HU-10, HU-11, HU-12 y HU-14, la confirmación del formato del informe con el Product Owner, las pruebas automatizadas y la validación de las respuestas del agente de IA (hechos, inferencias, incertidumbre, privacidad y control de acceso).
+El Sprint 2 superó el alcance planificado: además de la especificación y el diseño de RF-06 a RF-12, el equipo implementó las siete historias en React y .NET. Los 30 casos funcionales quedaron aprobados, 13 el 12/11/2026 y 17 el 17/11/2026, con dos defectos corregidos. El incremento puede recibir el visto bueno. Sigue pendiente confirmar con el Product Owner el formato del informe y completar las horas reales en el tablero.

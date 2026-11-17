@@ -1,6 +1,7 @@
 using System.Globalization;
 using Uta.Middleware.Application.DTOs;
 using Uta.Middleware.Application.DTOs.Moodle;
+using Uta.Middleware.Application.Moodle;
 
 namespace Uta.AcademicAnalysis.WebApi.Analysis;
 
@@ -61,9 +62,7 @@ public static class AlertEvaluator
                 && !item.ItemType.Equals("category", StringComparison.OrdinalIgnoreCase))
             .ToDictionary(item => item.Id);
         var students = snapshot.EnrolledUsers
-            .Where(user => user.Roles.Any(role =>
-                role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
-                || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)))
+            .Where(MoodleParticipantRoles.IsStudent)
             .GroupBy(user => user.Id)
             .Select(group => group.First())
             .ToArray();

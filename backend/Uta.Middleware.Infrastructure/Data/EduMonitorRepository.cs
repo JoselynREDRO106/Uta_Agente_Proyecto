@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Uta.Middleware.Application.DTOs;
 using Uta.Middleware.Application.DTOs.Moodle;
 using Uta.Middleware.Application.Interfaces;
+using Uta.Middleware.Application.Moodle;
 
 namespace Uta.Middleware.Infrastructure.Data;
 
@@ -331,9 +332,7 @@ internal sealed class EduMonitorRepository(EduMonitorDbContext dbContext) : IEdu
         var userIds = users
             .Where(user => user.Id > 0
                 && userIdsByMoodleId.ContainsKey(user.Id)
-                && user.Roles.Any(role =>
-                    role.ShortName.Equals("student", StringComparison.OrdinalIgnoreCase)
-                    || role.ShortName.Equals("estudiante", StringComparison.OrdinalIgnoreCase)))
+                && MoodleParticipantRoles.IsStudent(user))
             .Select(user => userIdsByMoodleId[user.Id])
             .Distinct()
             .ToArray();

@@ -150,6 +150,48 @@ public sealed partial class CursosController(
             courseId, search, status?.Trim().ToLowerInvariant(), page, pageSize, cancellationToken));
     }
 
+    [HttpGet("{courseId:int}/docentes")]
+    [ProducesResponseType(typeof(IReadOnlyCollection<DocenteCursoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyCollection<DocenteCursoDto>>> ObtenerDocentes(
+        int courseId,
+        CancellationToken cancellationToken)
+    {
+        if (courseId <= 0)
+        {
+            return BadRequest("El curso debe ser positivo.");
+        }
+
+        if (!await CanAccessCourseAsync(courseId, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        if (analysisQueries is null)
+        {
+            return Problem(
+                title: "El servicio de Análisis no está configurado.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        try
+        {
+            return Ok(await analysisQueries.GetCourseTeachersAsync(
+                courseId, GetBearerToken(), cancellationToken));
+        }
+        catch (HttpRequestException exception)
+        {
+            return exception.StatusCode == System.Net.HttpStatusCode.NotFound
+                ? NotFound()
+                : DownstreamFailure("Análisis", exception);
+        }
+        catch (JsonException exception)
+        {
+            return DownstreamInvalidResponse("Análisis", exception);
+        }
+    }
+
     [HttpGet("{courseId:int}/estudiantes/{studentId:int}/seguimiento")]
     [ProducesResponseType(typeof(SeguimientoEstudianteDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
