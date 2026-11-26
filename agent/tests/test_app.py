@@ -152,7 +152,7 @@ class AgentApiTests(unittest.TestCase):
                     set(response.json()),
                     {"respuesta", "hechos", "inferencias", "recomendaciones", "incertidumbre", "herramientas"},
                 )
-                self.assertIn("72.5", response.json()["respuesta"])
+                self.assertIn("7.25", response.json()["respuesta"])
         finally:
             app.AGENT_API_KEY = original_key
             app.create_agent_graph = original_graph

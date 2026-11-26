@@ -27,6 +27,11 @@ public interface IAnalysisQueryClient
         string? bearerToken,
         CancellationToken cancellationToken = default);
 
+    Task<LibroCalificacionesDto?> GetCourseGradebookAsync(
+        int courseId,
+        string? bearerToken,
+        CancellationToken cancellationToken = default);
+
     Task<SeguimientoEstudianteDto?> GetStudentTrackingAsync(
         int courseId,
         int studentId,

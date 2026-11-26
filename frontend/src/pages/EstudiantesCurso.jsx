@@ -1,57 +1,139 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getCourseStudents } from '../services/api.js'
+import { getAllCourseStudents, getCourseGradebook, getStudentTracking } from '../services/api.js'
+import { readAnalysisSettings } from '../services/analysisSettings.js'
 
-const pageSize = 10
-
-function statusLabel(status) {
-  return ({
-    calificado: 'Con calificaciones',
-    pendiente: 'Pendiente de calificar',
-    sin_entrega: 'Sin entrega',
-    sin_datos: 'Sin datos',
-  })[status] ?? status
+function formatGrade(value) {
+  return Number(value).toLocaleString('es-EC', { maximumFractionDigits: 2, useGrouping: false })
 }
 
-function statusTone(status) {
-  return ({
-    calificado: 'success',
-    pendiente: 'warning',
-    sin_entrega: 'danger',
-    sin_datos: 'neutral',
-  })[status] ?? 'neutral'
+function formatScale(min, max) {
+  return `${formatGrade(min)}–${formatGrade(max)}`
+}
+
+function scoreOverTen(note, column) {
+  if (note?.nota == null) return null
+  const min = Number(column.escalaMinima)
+  const max = Number(column.escalaMaxima)
+  const value = Number(note.nota)
+  if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max) || max === min) return null
+  return (value - min) * 10 / (max - min)
+}
+
+function gradedCount(columns, notes) {
+  return columns.filter((column) => notes.get(column.itemId)?.nota != null).length
+}
+
+function csvCell(value) {
+  const text = String(value ?? '')
+  return /[;"\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
+}
+
+function downloadGradebook(courseId, columns, rows) {
+  const header = ['Estudiante', 'Correo', ...columns.map((column) => `${column.item} (${formatScale(column.escalaMinima, column.escalaMaxima)})`), 'Con nota']
+  const body = rows.map(({ student, notes }) => [
+    student.nombre,
+    student.email || '',
+    ...columns.map((column) => {
+      const note = notes.get(column.itemId)
+      return note?.nota == null ? '' : formatGrade(note.nota)
+    }),
+    `${gradedCount(columns, notes)}/${columns.length}`,
+  ])
+  const csv = [header, ...body].map((line) => line.map(csvCell).join(';')).join('\r\n')
+  const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `calificaciones-curso-${courseId}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 function EstudiantesCurso() {
   const { id } = useParams()
-  const [studentResult, setStudentResult] = useState(null)
-  const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('')
-  const [page, setPage] = useState(1)
-  const key = JSON.stringify([id, search, status, page])
-  const studentsLoading = studentResult?.key !== key
-  const students = studentsLoading ? null : studentResult.data
-  const error = studentsLoading ? '' : studentResult.error
+  const [gradebook, setGradebook] = useState(null)
+  const [query, setQuery] = useState('')
+  const gradebookLoading = gradebook?.courseId !== id
+  const gradeColumns = gradebookLoading ? [] : gradebook.columns
+  const gradeRows = gradebookLoading ? [] : gradebook.rows
+  const gradebookError = gradebookLoading ? '' : gradebook.error
 
   useEffect(() => {
     let active = true
-    getCourseStudents(id, { search, status, page, pageSize })
-      .then((data) => {
-        if (active) setStudentResult({ key, data, error: '' })
+
+    async function loadFromTracking() {
+      const enrolled = await getAllCourseStudents(id)
+      const trackings = await Promise.all(enrolled.map(async (student) => ({
+        student,
+        tracking: await getStudentTracking(id, student.moodleId),
+      })))
+      const columns = []
+      const seen = new Set()
+      for (const { tracking } of trackings) {
+        for (const note of tracking.notas ?? []) {
+          if (seen.has(note.itemId)) continue
+          seen.add(note.itemId)
+          columns.push(note)
+        }
+      }
+      columns.sort((left, right) => left.itemId - right.itemId)
+      return {
+        courseId: id,
+        error: '',
+        columns,
+        rows: trackings.map(({ student, tracking }) => ({
+          student,
+          notes: new Map((tracking.notas ?? []).map((note) => [note.itemId, note])),
+        })),
+      }
+    }
+
+    getCourseGradebook(id)
+      .then((book) => {
+        if (!active) return
+        setGradebook({
+          courseId: id,
+          error: '',
+          columns: (book.actividades ?? []).map((activity) => ({
+            itemId: activity.itemId,
+            item: activity.nombre,
+            escalaMinima: activity.escalaMinima,
+            escalaMaxima: activity.escalaMaxima,
+          })),
+          rows: (book.estudiantes ?? []).map((student) => ({
+            student: { moodleId: student.moodleId, nombre: student.nombre, email: student.email },
+            notes: new Map((student.notas ?? []).map((note) => [note.itemId, note])),
+          })),
+        })
       })
-      .catch((requestError) => {
-        if (active) setStudentResult({ key, data: null, error: requestError.message })
+      .catch(async (requestError) => {
+        try {
+          const fallback = await loadFromTracking()
+          if (active) setGradebook(fallback)
+        } catch {
+          if (active) setGradebook({ courseId: id, error: requestError.message, columns: [], rows: [] })
+        }
       })
 
     return () => { active = false }
-  }, [id, search, status, page, key])
+  }, [id])
 
-  function applyFilters(event) {
-    event.preventDefault()
-    setPage(1)
-    setSearch(searchInput)
-  }
+  useEffect(() => {
+    if (gradebookLoading) return undefined
+    const hash = window.location.hash
+    if (!hash.startsWith('#actividad-')) return undefined
+    const name = decodeURIComponent(hash.slice('#actividad-'.length))
+    const header = document.querySelector(`[data-activity="${CSS.escape(name)}"]`)
+    header?.scrollIntoView({ inline: 'center', block: 'center' })
+    return undefined
+  }, [gradebookLoading, gradeColumns, id])
+
+  const threshold = readAnalysisSettings(id)?.umbral ?? 6
+  const normalizedQuery = query.trim().toLowerCase()
+  const visibleRows = normalizedQuery
+    ? gradeRows.filter((row) => row.student.nombre.toLowerCase().includes(normalizedQuery))
+    : gradeRows
+  const columnCount = Math.max(gradeColumns.length + 2, 3)
 
   return (
     <>
@@ -59,74 +141,80 @@ function EstudiantesCurso() {
         <div>
           <span className="eyebrow">SEGUIMIENTO INDIVIDUAL</span>
           <h1>Estudiantes matriculados</h1>
-          <p className="muted">Busca y filtra estudiantes del curso para consultar su seguimiento individual.</p>
+          <p className="muted">Nota de cada actividad en la escala de Moodle. «—» significa que no hay nota registrada; no es un cero. Las notas bajo el umbral del análisis ({threshold.toFixed(2)}/10) se marcan en color.</p>
         </div>
+        <button
+          className="button button--secondary"
+          disabled={gradebookLoading || gradeRows.length === 0}
+          onClick={() => downloadGradebook(id, gradeColumns, gradeRows)}
+          type="button"
+        >
+          Descargar CSV
+        </button>
       </div>
 
-      {error && <p className="course-message course-message--error" role="alert">{error}</p>}
+      {gradebookError && <p className="course-message course-message--error" role="alert">{gradebookError}</p>}
 
-      <section className="content-card student-list">
-        <div className="card-heading">
-          <div>
-            <h2>Listado de estudiantes</h2>
-            <p className="muted">Información basada en la última sincronización con Moodle.</p>
-          </div>
-          <span className="count-pill">{students?.totalItems ?? 0} estudiantes</span>
+      <section className="content-card">
+        <div className="card-heading card-heading--tools">
+          <label>
+            Buscar estudiante
+            <input
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Nombre"
+              type="search"
+              value={query}
+            />
+          </label>
+          <span className="count-pill">{gradebookLoading ? '…' : `${visibleRows.length} estudiantes`}</span>
         </div>
-        <form className="student-filters" onSubmit={applyFilters}>
-          <label htmlFor="student-search">Buscar</label>
-          <input
-            id="student-search"
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Nombre o correo"
-            value={searchInput}
-          />
-          <label htmlFor="student-status">Estado</label>
-          <select
-            id="student-status"
-            onChange={(event) => { setStatus(event.target.value); setPage(1) }}
-            value={status}
-          >
-            <option value="">Todos</option>
-            <option value="calificado">Con calificaciones</option>
-            <option value="pendiente">Pendiente de calificar</option>
-            <option value="sin_entrega">Sin entrega</option>
-            <option value="sin_datos">Sin datos</option>
-          </select>
-          <button className="button button--secondary" type="submit">Aplicar filtros</button>
-        </form>
         <div className="table-scroll">
-          <table>
-            <thead><tr><th>Estudiante</th><th>Promedio</th><th>Estado de datos</th></tr></thead>
+          <table className="gradebook">
+            <thead>
+              <tr>
+                <th>Estudiante</th>
+                {gradeColumns.map((column) => (
+                  <th data-activity={column.item} key={column.itemId}>
+                    {column.item}
+                    <small>{formatScale(column.escalaMinima, column.escalaMaxima)}</small>
+                  </th>
+                ))}
+                <th>Con nota</th>
+              </tr>
+            </thead>
             <tbody>
-              {studentsLoading && <tr><td colSpan="3">Cargando información…</td></tr>}
-              {!studentsLoading && students?.items?.map((student) => (
+              {gradebookLoading && <tr><td colSpan={columnCount}>Cargando calificaciones…</td></tr>}
+              {!gradebookLoading && visibleRows.map(({ student, notes }) => (
                 <tr key={student.moodleId}>
                   <td>
                     <span className="student-cell">
-                      <span className="student-avatar">{student.nombre.split(' ').map((part) => part[0]).slice(0, 2).join('')}</span>
                       <span>
                         <strong><Link to={`/cursos/${id}/estudiantes/${student.moodleId}`}>{student.nombre}</Link></strong>
                         <small>{student.email || 'Correo no disponible'}</small>
                       </span>
                     </span>
                   </td>
-                  <td>{student.promedio == null ? 'Sin datos' : `${Number(student.promedio).toFixed(2)} / 100`}</td>
-                  <td><span className={`status-pill status-pill--${statusTone(student.estado)}`}>{statusLabel(student.estado)}</span></td>
+                  {gradeColumns.map((column) => {
+                    const note = notes.get(column.itemId)
+                    const score = scoreOverTen(note, column)
+                    const belowThreshold = score != null && score < threshold
+                    return (
+                      <td className={belowThreshold ? 'gradebook__low' : undefined} key={column.itemId}>
+                        {note?.nota == null ? '—' : formatGrade(note.nota)}
+                      </td>
+                    )
+                  })}
+                  <td>{gradedCount(gradeColumns, notes)}/{gradeColumns.length}</td>
                 </tr>
               ))}
-              {!studentsLoading && students?.items?.length === 0 && (
-                <tr><td colSpan="3">No hay estudiantes que coincidan con los filtros.</td></tr>
+              {!gradebookLoading && !gradebookError && gradeRows.length === 0 && (
+                <tr><td colSpan={columnCount}>No hay estudiantes matriculados en la última sincronización.</td></tr>
+              )}
+              {!gradebookLoading && gradeRows.length > 0 && visibleRows.length === 0 && (
+                <tr><td colSpan={columnCount}>Ningún estudiante coincide con la búsqueda.</td></tr>
               )}
             </tbody>
           </table>
-        </div>
-        <div className="pagination">
-          <span className="muted">Página {students?.page ?? page} de {students?.totalPages ?? 0}</span>
-          <div>
-            <button className="button button--secondary" disabled={page <= 1 || studentsLoading} onClick={() => setPage((value) => value - 1)} type="button">Anterior</button>
-            <button className="button button--secondary" disabled={studentsLoading || page >= (students?.totalPages ?? 0)} onClick={() => setPage((value) => value + 1)} type="button">Siguiente</button>
-          </div>
         </div>
       </section>
     </>

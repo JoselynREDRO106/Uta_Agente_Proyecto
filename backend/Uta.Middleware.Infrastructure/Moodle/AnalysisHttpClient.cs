@@ -84,6 +84,26 @@ public sealed class AnalysisHttpClient(
                ?? throw new JsonException("El servicio de Análisis devolvió indicadores vacíos.");
     }
 
+    public async Task<LibroCalificacionesDto?> GetCourseGradebookAsync(
+        int courseId,
+        string? bearerToken,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get, _baseUrl + $"/api/analysis/courses/{courseId}/gradebook");
+        AddBearerToken(request, bearerToken);
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<LibroCalificacionesDto>(JsonOptions, cancellationToken)
+               ?? throw new JsonException("El servicio de Análisis devolvió un libro de calificaciones vacío.");
+    }
+
     public async Task<SeguimientoEstudianteDto?> GetStudentTrackingAsync(
         int courseId,
         int studentId,

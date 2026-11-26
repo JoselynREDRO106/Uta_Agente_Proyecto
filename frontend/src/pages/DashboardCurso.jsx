@@ -1,13 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import MetricCard from '../components/MetricCard.jsx'
-import {
-  createTeacherAccount,
-  getCourseIndicators,
-  getCourseTeachers,
-  getCourses,
-  getCurrentUser,
-} from '../services/api.js'
+import { getCourseIndicators, getCourses, getGroupAnalysis } from '../services/api.js'
+import { buildActivityAlerts, loadGradeColumns, readActivityAlertStore } from '../services/activityAlerts.js'
 
 function formatValue(value, suffix = '') {
   return value == null ? 'Sin datos' : `${value}${suffix}`
@@ -15,76 +10,53 @@ function formatValue(value, suffix = '') {
 
 function DashboardCurso() {
   const { id } = useParams()
-  const isAdministrator = getCurrentUser()?.rol === 'Administrador técnico'
   const [courseResult, setCourseResult] = useState(null)
-  const [teachers, setTeachers] = useState([])
-  const [teacherError, setTeacherError] = useState('')
-  const [accountDraft, setAccountDraft] = useState({ email: '', password: '' })
-  const [accountMessage, setAccountMessage] = useState('')
-  const [creatingAccount, setCreatingAccount] = useState(false)
   const courseLoading = courseResult?.id !== id
   const course = courseLoading ? null : courseResult.course
   const indicators = courseLoading ? null : courseResult.indicators
+  const lowestActivity = courseLoading ? null : courseResult.lowestActivity
+  const newAlerts = courseLoading ? null : courseResult.newAlerts
   const error = courseLoading ? '' : courseResult.error
 
   useEffect(() => {
     let active = true
-    Promise.all([getCourses(), getCourseIndicators(id)])
-      .then(([courses, result]) => {
+    Promise.all([
+      getCourses(),
+      getCourseIndicators(id),
+      getGroupAnalysis(id, { umbral: 6, minimoCalificaciones: 1 }).catch(() => null),
+      loadGradeColumns(id).catch(() => null),
+    ])
+      .then(([courses, result, analysis, gradebook]) => {
+        if (!active) return
+        const lowest = (analysis?.actividades ?? []).find((item) => item.promedio != null) ?? null
+        const nuevas = gradebook
+          ? buildActivityAlerts(gradebook.columns, gradebook.rows, readActivityAlertStore(id))
+            .filter((item) => item.estado === 'Nueva').length
+          : null
+        setCourseResult({
+          id,
+          course: courses.find((item) => String(item.id) === id) ?? null,
+          indicators: result,
+          lowestActivity: lowest,
+          newAlerts: nuevas,
+          error: '',
+        })
+      })
+      .catch((requestError) => {
         if (active) {
           setCourseResult({
             id,
-            course: courses.find((item) => String(item.id) === id) ?? null,
-            indicators: result,
-            error: '',
+            course: null,
+            indicators: null,
+            lowestActivity: null,
+            newAlerts: null,
+            error: requestError.message,
           })
         }
       })
-      .catch((requestError) => {
-        if (active) {
-          setCourseResult({ id, course: null, indicators: null, error: requestError.message })
-        }
-      })
 
     return () => { active = false }
   }, [id])
-
-  useEffect(() => {
-    let active = true
-    getCourseTeachers(id)
-      .then((result) => {
-        if (active) {
-          setTeachers(result)
-          setTeacherError('')
-        }
-      })
-      .catch((requestError) => {
-        if (active) {
-          setTeachers([])
-          setTeacherError(requestError.message)
-        }
-      })
-    return () => { active = false }
-  }, [id])
-
-  async function createAccount(teacher) {
-    setCreatingAccount(true)
-    setAccountMessage('')
-    try {
-      await createTeacherAccount({
-        nombre: teacher.nombre,
-        email: teacher.email,
-        password: accountDraft.password,
-        cursosMoodle: [Number(id)],
-      })
-      setAccountMessage(`Cuenta docente creada para ${teacher.nombre}. Debe iniciar sesión de nuevo para ver el curso.`)
-      setAccountDraft({ email: '', password: '' })
-    } catch (requestError) {
-      setAccountMessage(requestError.message)
-    } finally {
-      setCreatingAccount(false)
-    }
-  }
 
   const average = indicators?.promedio
   const progress = indicators?.progresoPorcentaje
@@ -107,10 +79,10 @@ function DashboardCurso() {
 
       <section aria-label="Indicadores del curso" className="metric-grid">
         <MetricCard
-          detail={average == null ? 'No existen calificaciones con escala disponible' : `Escala normalizada de 0 a ${indicators.notaMaxima}`}
+          detail={average == null ? 'No existen calificaciones con escala disponible' : 'Escala de 0 a 10'}
           label="Promedio general"
           tone="blue"
-          value={formatValue(average == null ? null : Number(average).toFixed(2), average == null ? '' : ' / 100')}
+          value={formatValue(average == null ? null : (Number(average) / 10).toFixed(2), average == null ? '' : ' / 10')}
         />
         <MetricCard
           detail="Matrículas sincronizadas"
@@ -141,14 +113,20 @@ function DashboardCurso() {
         <div className="card-heading">
           <div>
             <h2>Distribución de calificaciones</h2>
-            <p className="muted">Porcentaje normalizado sobre 100; solo incluye notas calificadas.</p>
+            <p className="muted">Nota normalizada sobre 10. Cada número cuenta calificaciones registradas, no estudiantes.</p>
           </div>
           <span className="count-pill">{indicators?.actividadesEvaluadas ?? 0} / {indicators?.actividadesTotales ?? 0} actividades evaluadas</span>
         </div>
         <div className="distribution-grid">
           {(indicators?.distribucion ?? []).map((band) => (
             <div className="distribution-item" key={band.rango}>
-              <span>{band.rango}</span>
+              <span>{({
+                '0–59': '0–5.9',
+                '60–69': '6–6.9',
+                '70–84': '7–8.4',
+                '85–100': '8.5–10',
+                '>100': '>10',
+              })[band.rango] ?? band.rango}</span>
               <strong>{band.cantidad}</strong>
               <small>calificaciones</small>
             </div>
@@ -157,79 +135,26 @@ function DashboardCurso() {
         </div>
       </section>
 
-      <section className="content-card">
-        <div className="card-heading">
-          <div>
-            <h2>Docentes sincronizados</h2>
-            <p className="muted">Salen de la matrícula de Moodle. La cuenta de acceso se crea aparte, con rol Docente.</p>
-          </div>
-          <span className="count-pill">{teachers.length} docentes</span>
-        </div>
-        {teacherError && <p className="course-message course-message--error" role="alert">{teacherError}</p>}
-        {!teacherError && teachers.length === 0 && (
-          <p className="muted">Este curso todavía no tiene docentes en la última sincronización. Vuelve a sincronizar el ID de Moodle.</p>
-        )}
-        {teachers.length > 0 && (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr><th>Nombre</th><th>Correo</th><th>Rol en Moodle</th>{isAdministrator && <th>Cuenta</th>}</tr>
-              </thead>
-              <tbody>
-                {teachers.map((teacher) => (
-                  <tr key={teacher.id}>
-                    <td>{teacher.nombre}</td>
-                    <td>{teacher.email || 'Sin correo'}</td>
-                    <td>{teacher.rolMoodle}</td>
-                    {isAdministrator && (
-                      <td>
-                        <button
-                          className="button button--secondary"
-                          disabled={creatingAccount || !teacher.email || accountDraft.email !== teacher.email || accountDraft.password.length < 12}
-                          onClick={() => createAccount(teacher)}
-                          type="button"
-                        >
-                          Crear cuenta
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {isAdministrator && teachers.length > 0 && (
-          <form className="feature-form" onSubmit={(event) => event.preventDefault()}>
-            <label htmlFor="teacher-account-email">Correo del docente</label>
-            <select
-              id="teacher-account-email"
-              onChange={(event) => setAccountDraft((draft) => ({ ...draft, email: event.target.value }))}
-              value={accountDraft.email}
-            >
-              <option value="">Selecciona un docente</option>
-              {teachers.filter((teacher) => teacher.email).map((teacher) => (
-                <option key={teacher.id} value={teacher.email}>{teacher.nombre}</option>
-              ))}
-            </select>
-            <label htmlFor="teacher-account-password">Contraseña inicial (mínimo 12 caracteres)</label>
-            <input
-              id="teacher-account-password"
-              minLength={12}
-              onChange={(event) => setAccountDraft((draft) => ({ ...draft, password: event.target.value }))}
-              type="password"
-              value={accountDraft.password}
-            />
-            {accountMessage && <p className="course-message" role="status">{accountMessage}</p>}
-          </form>
-        )}
+      <section aria-label="Lectura del curso" className="course-reading">
+        <article className="content-card">
+          <h2>Actividad más baja</h2>
+          {lowestActivity ? (
+            <>
+              <strong>{lowestActivity.nombre}</strong>
+              <p>{Number(lowestActivity.promedio).toFixed(2)} / 10{lowestActivity.datosInsuficientes ? ' · muestra corta' : ''}</p>
+            </>
+          ) : (
+            <p className="muted">{courseLoading ? 'Calculando…' : 'No hay actividades con promedio.'}</p>
+          )}
+          <Link to="analisis">Ver análisis grupal</Link>
+        </article>
+        <article className="content-card">
+          <h2>Alertas nuevas</h2>
+          <strong>{newAlerts == null ? (courseLoading ? '…' : 'Sin datos') : newAlerts}</strong>
+          <p className="muted">Notas de una actividad menores al corte, en estado Nueva.</p>
+          <Link to="alertas">Ver alertas</Link>
+        </article>
       </section>
-
-      <div className="course-dashboard-shortcuts">
-        <Link className="button button--secondary" to={`/cursos/${id}/estudiantes`}>Ver estudiantes</Link>
-        <Link className="button button--secondary" to={`/cursos/${id}/alertas`}>Revisar alertas</Link>
-        <Link className="button button--secondary" to={`/cursos/${id}/informes`}>Consultar informes</Link>
-      </div>
     </>
   )
 }

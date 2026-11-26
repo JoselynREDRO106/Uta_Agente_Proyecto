@@ -53,7 +53,7 @@ public sealed partial class AcademicAnalysisController
         var findings = new List<string>();
         if (indicators.Promedio is { } average)
         {
-            findings.Add($"El promedio del curso es {average:0.00} sobre {indicators.NotaMaxima:0.##}.");
+            findings.Add($"El promedio del curso es {average / 10m:0.00} sobre 10.");
         }
 
         findings.Add(below.Length == 0

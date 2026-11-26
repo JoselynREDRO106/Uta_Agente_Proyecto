@@ -9,8 +9,8 @@ function AsistenteCurso() {
       <div className="page-heading">
         <div>
           <span className="eyebrow">ASISTENTE ACADÉMICO</span>
-          <h1>Consultar al agente de IA</h1>
-          <p className="muted">Haz preguntas sobre los indicadores agregados de este curso.</p>
+          <h1 id="assistant-heading">Agente académico</h1>
+          <p className="muted">Conversa sobre los indicadores del curso. La IA responde con los datos agregados, sin nombres ni notas individuales.</p>
         </div>
       </div>
       <CourseAssistantPanel courseId={id} />

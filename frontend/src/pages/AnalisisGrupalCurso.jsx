@@ -10,7 +10,7 @@ function AnalisisGrupalCurso() {
         <div>
           <span className="eyebrow">ANÁLISIS ACADÉMICO</span>
           <h1>Análisis grupal</h1>
-          <p className="muted">Consulta promedios, actividades y tendencias del curso.</p>
+          <p className="muted">Promedios sobre 10. La tendencia sigue el orden de las actividades y la tabla ordena de menor a mayor promedio.</p>
         </div>
       </div>
       <GroupAnalysisPanel courseId={id} />

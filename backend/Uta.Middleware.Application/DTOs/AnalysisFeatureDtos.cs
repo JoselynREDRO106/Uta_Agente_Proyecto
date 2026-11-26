@@ -10,11 +10,14 @@ public sealed record ResultadoActividadDto(
     bool DatosInsuficientes);
 
 public sealed record PuntoTendenciaDto(
-    DateOnly Fecha,
+    DateOnly? Fecha,
     decimal? PromedioCurso,
     decimal Escala,
     int NumCalificaciones,
-    bool DatosInsuficientes);
+    bool DatosInsuficientes,
+    int ItemId,
+    string Actividad,
+    decimal? Variacion);
 
 public sealed record AnalisisGrupalDto(
     int CursoId,
@@ -115,6 +118,28 @@ public sealed record SeguimientoActividadDto(
     int ItemId,
     string Actividad,
     string Estado);
+
+public sealed record ActividadCalificacionDto(
+    int ItemId,
+    string Nombre,
+    decimal EscalaMinima,
+    decimal EscalaMaxima);
+
+public sealed record NotaLibroDto(int ItemId, decimal? Nota);
+
+public sealed record FilaLibroCalificacionesDto(
+    int MoodleId,
+    string Nombre,
+    string Email,
+    IReadOnlyCollection<NotaLibroDto> Notas);
+
+public sealed record LibroCalificacionesDto(
+    int CursoId,
+    string Fuente,
+    DateTime UltimaSincronizacionUtc,
+    string EstadoSincronizacion,
+    IReadOnlyCollection<ActividadCalificacionDto> Actividades,
+    IReadOnlyCollection<FilaLibroCalificacionesDto> Estudiantes);
 
 public sealed record SeguimientoEstudianteDto(
     int CursoId,

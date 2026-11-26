@@ -48,7 +48,7 @@ builder.Services.AddAuthorization(options =>
         .Build();
 });
 builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
-    policy.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod()));
+    policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173").AllowAnyHeader().AllowAnyMethod()));
 
 var integrationApiKey = builder.Configuration["MoodleIntegration:ApiKey"];
 if (string.IsNullOrWhiteSpace(integrationApiKey) || Encoding.UTF8.GetByteCount(integrationApiKey) < 32)

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { getGroupAnalysis } from '../services/api.js'
+import { getCourseGradebook, getCourseIndicators, getCourseStudents, getGroupAnalysis, getStudentTracking } from '../services/api.js'
+import { readAnalysisSettings, writeAnalysisSettings } from '../services/analysisSettings.js'
+import ActivityTrendChart from './ActivityTrendChart.jsx'
 
 function formatUtcDate(value) {
   if (!value) return 'Sin fecha'
@@ -10,13 +12,76 @@ function formatUtcDate(value) {
   }).format(new Date(value))
 }
 
+function buildActivitySeries(analysis, order) {
+  const trend = analysis?.tendencia ?? []
+  if (trend.length > 0 && trend.every((point) => point.actividad)) {
+    return trend.map((point, index) => ({
+      key: point.itemId ?? `${point.actividad}-${index}`,
+      nombre: point.actividad,
+      promedio: point.promedioCurso == null ? null : Number(point.promedioCurso),
+      numCalificaciones: point.numCalificaciones,
+      datosInsuficientes: Boolean(point.datosInsuficientes),
+      delta: point.variacion == null ? null : Number(point.variacion),
+    }))
+  }
+
+  const activities = analysis?.actividades ?? []
+  const byId = new Map(activities.map((item) => [item.itemId, item]))
+  const seen = new Set()
+  const ordered = []
+  for (const entry of order) {
+    const item = byId.get(entry.itemId)
+    if (!item || seen.has(item.itemId)) continue
+    seen.add(item.itemId)
+    ordered.push(item)
+  }
+  for (const item of activities) {
+    if (seen.has(item.itemId)) continue
+    seen.add(item.itemId)
+    ordered.push(item)
+  }
+
+  let previous = null
+  return ordered.map((item) => {
+    const promedio = item.promedio == null ? null : Number(item.promedio)
+    const delta = promedio != null && previous != null ? promedio - previous : null
+    if (promedio != null) previous = promedio
+    return {
+      key: item.itemId,
+      nombre: item.nombre,
+      promedio,
+      numCalificaciones: item.numCalificaciones,
+      datosInsuficientes: Boolean(item.datosInsuficientes),
+      delta,
+    }
+  })
+}
+
+async function loadActivityOrder(courseId) {
+  try {
+    const book = await getCourseGradebook(courseId)
+    if (Array.isArray(book?.actividades) && book.actividades.length > 0) {
+      return book.actividades.map((activity) => ({ itemId: activity.itemId }))
+    }
+  } catch {
+    // El libro único entra cuando se reinician Análisis y Middleware.
+  }
+
+  const page = await getCourseStudents(courseId, { page: 1, pageSize: 1 })
+  const student = page?.items?.[0]
+  if (!student) return []
+  const tracking = await getStudentTracking(courseId, student.moodleId)
+  return (tracking.actividades ?? []).map((activity) => ({ itemId: activity.itemId }))
+}
+
 function GroupAnalysisPanel({ courseId }) {
   const [result, setResult] = useState({ courseId: null, loading: true, error: '', data: null })
   const [umbral, setUmbral] = useState('6')
-  const [minimoCalificaciones, setMinimoCalificaciones] = useState('7')
-  const [filters, setFilters] = useState({ umbral: 6, minimoCalificaciones: 7 })
+  const [minimoCalificaciones, setMinimoCalificaciones] = useState('1')
+  const [filters, setFilters] = useState(null)
   const [filterError, setFilterError] = useState('')
-  const current = result.courseId === courseId
+  const current = filters
+    && result.courseId === courseId
     && result.umbral === filters.umbral
     && result.minimoCalificaciones === filters.minimoCalificaciones
     ? result
@@ -24,8 +89,42 @@ function GroupAnalysisPanel({ courseId }) {
 
   useEffect(() => {
     let active = true
-    getGroupAnalysis(courseId, filters)
-      .then((data) => {
+    const saved = readAnalysisSettings(courseId)
+    if (saved) {
+      setUmbral(String(saved.umbral))
+      setMinimoCalificaciones(String(saved.minimoCalificaciones))
+      setFilters(saved)
+      return () => { active = false }
+    }
+
+    getCourseIndicators(courseId)
+      .then((indicators) => {
+        const enrolled = Math.max(1, Math.min(1000, Number(indicators?.estudiantes) || 1))
+        const next = { umbral: 6, minimoCalificaciones: enrolled }
+        if (!active) return
+        writeAnalysisSettings(courseId, next)
+        setUmbral('6')
+        setMinimoCalificaciones(String(enrolled))
+        setFilters(next)
+      })
+      .catch(() => {
+        const next = { umbral: 6, minimoCalificaciones: 1 }
+        if (!active) return
+        setUmbral('6')
+        setMinimoCalificaciones('1')
+        setFilters(next)
+      })
+    return () => { active = false }
+  }, [courseId])
+
+  useEffect(() => {
+    if (!filters) return undefined
+    let active = true
+    Promise.all([
+      getGroupAnalysis(courseId, filters),
+      loadActivityOrder(courseId).catch(() => []),
+    ])
+      .then(([data, order]) => {
         if (active) setResult({
           courseId,
           umbral: filters.umbral,
@@ -33,6 +132,7 @@ function GroupAnalysisPanel({ courseId }) {
           loading: false,
           error: '',
           data,
+          series: buildActivitySeries(data, order),
         })
       })
       .catch((error) => {
@@ -62,18 +162,18 @@ function GroupAnalysisPanel({ courseId }) {
     }
 
     setFilterError('')
-    setFilters({ umbral: threshold, minimoCalificaciones: minimum })
+    const next = { umbral: threshold, minimoCalificaciones: minimum }
+    writeAnalysisSettings(courseId, next)
+    setFilters(next)
   }
 
   return (
     <section className="content-card feature-panel">
-      <div className="card-heading">
-        <div>
-          <h2>Análisis grupal</h2>
-          <p className="muted">Promedios normalizados a 10; configura el umbral y la muestra mínima.</p>
+      {current.data && (
+        <div className="card-heading card-heading--tools">
+          <span className="count-pill">Fuente: {current.data.fuente}</span>
         </div>
-        {current.data && <span className="count-pill">Fuente: {current.data.fuente}</span>}
-      </div>
+      )}
       <form className="analysis-controls" onSubmit={applyFilters}>
         <label>
           Umbral bajo (0–10)
@@ -115,7 +215,7 @@ function GroupAnalysisPanel({ courseId }) {
               <thead><tr><th>Actividad</th><th>Promedio / 10</th><th>Calificaciones</th><th>Resultado</th></tr></thead>
               <tbody>
                 {current.data.actividades.map((activity) => (
-                  <tr key={activity.itemId}>
+                  <tr className={!activity.datosInsuficientes && activity.bajoUmbral ? 'analysis-row--low' : undefined} key={activity.itemId}>
                     <td>{activity.nombre}</td>
                     <td>{activity.promedio == null ? 'Sin datos' : Number(activity.promedio).toFixed(2)}</td>
                     <td>{activity.numCalificaciones}</td>
@@ -131,33 +231,9 @@ function GroupAnalysisPanel({ courseId }) {
             </table>
           </div>
           <section className="trend-list" aria-labelledby="group-trend-heading">
-            <h3 id="group-trend-heading">Tendencia por fecha</h3>
-            {current.data.tendencia.length === 0
-              ? <p className="muted">Moodle no proporcionó fechas de calificación.</p>
-              : (
-                <ol className="trend-chart">
-                  {current.data.tendencia.map((point) => {
-                    const hasAverage = !point.datosInsuficientes && point.promedioCurso != null
-                    const percentage = hasAverage
-                      ? Math.min(100, Math.max(0, Number(point.promedioCurso) * 10))
-                      : 0
-                    return (
-                      <li aria-label={`${point.fecha}: ${hasAverage
-                        ? `${Number(point.promedioCurso).toFixed(2)} de 10`
-                        : `muestra insuficiente, ${point.numCalificaciones} calificaciones`}`}
-                      key={point.fecha}>
-                        <span className="trend-chart__column" aria-hidden="true">
-                          <span className="trend-chart__bar" style={{ height: `${percentage}%` }} />
-                        </span>
-                        <strong>{point.fecha}</strong>
-                        <span>{hasAverage
-                          ? `${Number(point.promedioCurso).toFixed(2)} / 10`
-                          : 'Datos insuficientes'}</span>
-                      </li>
-                    )
-                  })}
-                </ol>
-              )}
+            <h3 id="group-trend-heading">Tendencia por actividad</h3>
+            <p className="muted">Cada punto es una actividad, en el orden del libro de calificaciones. El número junto al punto es la diferencia con la actividad anterior.</p>
+            <ActivityTrendChart points={current.series ?? []} threshold={current.data.umbralBajo} />
           </section>
         </>
       )}
