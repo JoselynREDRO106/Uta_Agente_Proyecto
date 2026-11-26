@@ -50,7 +50,7 @@ public static class AcademicReportPdf
                             columns.RelativeColumn(1);
                         });
                         AddMetric(table, "Estudiantes", indicators.Estudiantes.ToString(EcuadorCulture));
-                        AddMetric(table, "Promedio", Format(indicators.Promedio));
+                        AddMetric(table, "Promedio / 10", indicators.Promedio is { } average ? Format(average / 10m) : Format(null));
                         AddMetric(
                             table,
                             "Actividades evaluadas",

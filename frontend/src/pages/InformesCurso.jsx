@@ -112,7 +112,7 @@ function InformesCurso() {
           <h3>Métricas</h3>
           <ul>
             <li>Estudiantes: {content.indicadores.estudiantes}</li>
-            <li>Promedio: {content.indicadores.promedio == null ? 'Sin datos' : Number(content.indicadores.promedio).toFixed(2)}</li>
+            <li>Promedio: {content.indicadores.promedio == null ? 'Sin datos' : `${(Number(content.indicadores.promedio) / 10).toFixed(2)} / 10`}</li>
             <li>Actividades evaluadas: {content.indicadores.actividadesEvaluadas} de {content.indicadores.actividadesTotales}</li>
           </ul>
           <h3>Hallazgos</h3>

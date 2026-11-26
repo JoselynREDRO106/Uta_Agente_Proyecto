@@ -10,7 +10,7 @@ function RecomendacionesCurso() {
         <div>
           <span className="eyebrow">APOYO PEDAGÓGICO</span>
           <h1>Recomendaciones</h1>
-          <p className="muted">Genera y gestiona propuestas basadas en los resultados del curso.</p>
+          <p className="muted">Propuestas agrupadas por actividad, con el umbral del análisis grupal.</p>
         </div>
       </div>
       <RecommendationsPanel courseId={id} />

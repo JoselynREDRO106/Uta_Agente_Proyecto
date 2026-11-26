@@ -9,6 +9,8 @@ import AnalisisGrupalCurso from './pages/AnalisisGrupalCurso.jsx'
 import AsistenteCurso from './pages/AsistenteCurso.jsx'
 import RecomendacionesCurso from './pages/RecomendacionesCurso.jsx'
 import CourseWorkspace from './layouts/CourseWorkspace.jsx'
+import PlanesCurso from './pages/PlanesCurso.jsx'
+import PruebasCurso from './pages/PruebasCurso.jsx'
 import InformesCurso from './pages/InformesCurso.jsx'
 import AlertasCurso from './pages/AlertasCurso.jsx'
 import ReglasAlerta from './pages/ReglasAlerta.jsx'
@@ -16,6 +18,8 @@ import HistorialSincronizaciones from './pages/HistorialSincronizaciones.jsx'
 import Auditoria from './pages/Auditoria.jsx'
 import { getCurrentUser, hasSession } from './services/api.js'
 import ConfiguracionMoodle from './pages/ConfiguracionMoodle.jsx'
+import SincronizarCurso from './pages/SincronizarCurso.jsx'
+import Docentes from './pages/Docentes.jsx'
 import './App.css'
 
 function RequireAuth() {
@@ -45,12 +49,16 @@ function App() {
               <Route path="asistente" element={<AsistenteCurso />} />
               <Route path="agente" element={<AsistenteCurso />} />
               <Route path="recomendaciones" element={<RecomendacionesCurso />} />
+              <Route path="planes" element={<PlanesCurso />} />
+              <Route path="pruebas" element={<PruebasCurso />} />
               <Route path="informes" element={<InformesCurso />} />
               <Route path="alertas" element={<AlertasCurso />} />
               <Route path="alertas/reglas" element={<ReglasAlerta />} />
             </Route>
             <Route element={<RequireAdministrator />}>
               <Route path="/admin/moodle" element={<ConfiguracionMoodle />} />
+              <Route path="/admin/sincronizar" element={<SincronizarCurso />} />
+              <Route path="/admin/docentes" element={<Docentes />} />
               <Route path="/admin/sincronizaciones" element={<HistorialSincronizaciones />} />
               <Route path="/auditoria" element={<Auditoria />} />
               <Route path="/admin/auditoria" element={<Auditoria />} />

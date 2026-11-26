@@ -192,6 +192,47 @@ public sealed partial class CursosController(
         }
     }
 
+    [HttpGet("{courseId:int}/calificaciones")]
+    [ProducesResponseType(typeof(LibroCalificacionesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<LibroCalificacionesDto>> ObtenerCalificaciones(
+        int courseId,
+        CancellationToken cancellationToken)
+    {
+        if (courseId <= 0)
+        {
+            return BadRequest("El curso debe ser un identificador positivo.");
+        }
+
+        if (!await CanAccessCourseAsync(courseId, cancellationToken))
+        {
+            return Forbid();
+        }
+
+        if (analysisQueries is null)
+        {
+            return Problem(
+                title: "El servicio de Análisis no está configurado.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        try
+        {
+            var gradebook = await analysisQueries.GetCourseGradebookAsync(
+                courseId, GetBearerToken(), cancellationToken);
+            return gradebook is null ? NotFound() : Ok(gradebook);
+        }
+        catch (HttpRequestException exception)
+        {
+            return DownstreamFailure("Análisis", exception);
+        }
+        catch (JsonException exception)
+        {
+            return DownstreamInvalidResponse("Análisis", exception);
+        }
+    }
+
     [HttpGet("{courseId:int}/estudiantes/{studentId:int}/seguimiento")]
     [ProducesResponseType(typeof(SeguimientoEstudianteDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

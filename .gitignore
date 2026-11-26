@@ -5,6 +5,10 @@
 
 # dotenv files
 .env
+.env.local
+
+# Informe generado por las pruebas automáticas del frontend
+frontend/informes/
 
 # User-specific files
 *.rsuser

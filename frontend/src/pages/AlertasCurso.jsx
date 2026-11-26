@@ -1,140 +1,152 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { getCourseAlerts, updateAlertState } from '../services/api.js'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useParams } from 'react-router-dom'
+import {
+  buildActivityAlerts,
+  loadGradeColumns,
+  readActivityAlertStore,
+  writeActivityAlertStore,
+} from '../services/activityAlerts.js'
 
 const stateTone = { Nueva: 'warning', Revisada: 'success', Descartada: 'neutral' }
+const stateLabel = { Nueva: 'nuevas', Revisada: 'revisadas', Descartada: 'descartadas' }
 
-function formatDate(value) {
-  return value ? new Date(value).toLocaleString('es-EC') : 'No disponible'
+function formatGrade(value) {
+  return Number(value).toLocaleString('es-EC', { maximumFractionDigits: 2, useGrouping: false })
 }
 
 function AlertasCurso() {
   const { id } = useParams()
-  const [filter, setFilter] = useState('')
-  const [panel, setPanel] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [expanded, setExpanded] = useState(null)
-  const [busy, setBusy] = useState('')
+  const location = useLocation()
+  const [filter, setFilter] = useState('Nueva')
+  const [gradebook, setGradebook] = useState(null)
+  const [store, setStore] = useState(() => readActivityAlertStore(id))
+  const [draft, setDraft] = useState(() => String(readActivityAlertStore(id).threshold))
+  const [thresholdError, setThresholdError] = useState('')
+  const loading = gradebook?.courseId !== id
+  const error = loading ? '' : gradebook.error
+  const alerts = loading ? [] : buildActivityAlerts(gradebook.columns, gradebook.rows, store)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    try {
-      setPanel(await getCourseAlerts(id, filter))
-    } catch (loadError) {
-      setPanel(null)
-      setError(loadError.message)
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    const next = readActivityAlertStore(id)
+    setStore(next)
+    setDraft(String(next.threshold))
+  }, [id])
+
+  useEffect(() => {
+    let active = true
+    loadGradeColumns(id)
+      .then((book) => {
+        if (active) setGradebook({ courseId: id, error: '', ...book })
+      })
+      .catch((loadError) => {
+        if (active) setGradebook({ courseId: id, error: loadError.message, columns: [], rows: [] })
+      })
+    return () => { active = false }
+  }, [id])
+
+  useEffect(() => {
+    if (loading || !location.hash.startsWith('#alerta-')) return undefined
+    const key = decodeURIComponent(location.hash.slice('#alerta-'.length))
+    const match = alerts.find((alert) => alert.key === key)
+    if (match && match.estado !== filter) setFilter(match.estado)
+    const row = document.getElementById(`alerta-${key}`)
+    row?.scrollIntoView({ block: 'center' })
+    return undefined
+  }, [alerts, filter, loading, location.hash])
+
+  function applyThreshold(event) {
+    event.preventDefault()
+    const threshold = Number(draft)
+    if (!Number.isFinite(threshold) || threshold <= 0 || threshold > 10) {
+      setThresholdError('El corte debe ser mayor que 0 y no superar 10.')
+      return
     }
-  }, [id, filter])
+    const next = { ...store, threshold }
+    writeActivityAlertStore(id, next)
+    setStore(next)
+    setThresholdError('')
+  }
 
-  useEffect(() => { load() }, [load])
-
-  const change = async (alert, estado) => {
-    const key = `${alert.estudianteId}-${alert.tipo}`
-    setBusy(key)
-    setError('')
-    try {
-      await updateAlertState(id, alert.estudianteId, alert.tipo, estado)
-      await load()
-    } catch (changeError) {
-      setError(changeError.message)
-    } finally {
-      setBusy('')
-    }
+  function change(alert, estado) {
+    const next = { ...store, states: { ...store.states, [alert.key]: estado } }
+    writeActivityAlertStore(id, next)
+    setStore(next)
   }
 
   return (
     <>
       <div className="page-heading">
         <div>
-          <Link className="back-link" to={`/cursos/${id}`}>← Volver al curso</Link>
           <span className="eyebrow">ALERTAS ACADÉMICAS</span>
-          <h1>Alertas del curso</h1>
-          <p className="muted">Situaciones que conviene revisar según las reglas configuradas.</p>
+          <h1>Alertas por actividad</h1>
+          <p className="muted">
+            Sale una alerta cuando la nota de un estudiante en una actividad es menor a {Number(store.threshold).toFixed(2)}/10.
+            Una calificación de 4 entra. Si no hay nota, no se genera alerta.
+          </p>
         </div>
-        <Link className="button button--secondary" to={`/cursos/${id}/alertas/reglas`}>Configurar reglas</Link>
       </div>
 
       {error && <p className="course-message course-message--error" role="alert">{error}</p>}
-      {panel?.datosIncompletos && (
-        <p className="course-message course-message--warning" role="status">
-          {panel.aviso || 'Datos incompletos: la sincronización no terminó correctamente, no se generan alertas.'}
-        </p>
-      )}
+      <form className="analysis-controls content-card" onSubmit={applyThreshold}>
+        <label>
+          Alertar si la nota es menor a
+          <input
+            max="10"
+            min="0.01"
+            onChange={(event) => setDraft(event.target.value)}
+            step="0.01"
+            type="number"
+            value={draft}
+          />
+        </label>
+        <button className="button button--primary" type="submit">Aplicar</button>
+        {thresholdError && <p className="course-message course-message--error" role="alert">{thresholdError}</p>}
+      </form>
+
+      <div className="alert-counts" role="group" aria-label="Filtrar alertas por estado">
+        {['Nueva', 'Revisada', 'Descartada'].map((estado) => (
+          <button
+            className={filter === estado ? 'is-selected' : undefined}
+            key={estado}
+            onClick={() => setFilter(estado)}
+            type="button"
+          >
+            {estado === 'Nueva' ? 'Nuevas' : estado === 'Revisada' ? 'Revisadas' : 'Descartadas'}
+            <strong>{alerts.filter((alert) => alert.estado === estado).length}</strong>
+          </button>
+        ))}
+      </div>
 
       <section className="content-card">
-        <div className="card-heading">
-          <div><h2>Alertas generadas</h2></div>
-          <label>
-            Estado{' '}
-            <select onChange={(event) => setFilter(event.target.value)} value={filter}>
-              <option value="">Todas</option>
-              <option value="Nueva">Nueva</option>
-              <option value="Revisada">Revisada</option>
-              <option value="Descartada">Descartada</option>
-            </select>
-          </label>
-        </div>
         <div className="table-scroll">
           <table>
-            <thead><tr><th>Estudiante</th><th>Regla aplicada</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Actividad</th><th>Estudiante</th><th>Nota</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
-              {loading && <tr><td colSpan="5">Cargando alertas…</td></tr>}
-              {!loading && panel && panel.alertas.length === 0 && (
-                <tr><td colSpan="5">No hay alertas para mostrar.</td></tr>
+              {loading && <tr><td colSpan="5">Cargando calificaciones…</td></tr>}
+              {!loading && alerts.filter((alert) => alert.estado === filter).length === 0 && (
+                <tr><td colSpan="5">No hay alertas {stateLabel[filter]} con nota menor a {Number(store.threshold).toFixed(2)}/10.</td></tr>
               )}
-              {panel?.alertas.map((alert) => {
-                const key = `${alert.estudianteId}-${alert.tipo}`
-                return (
-                  <Fragment key={key}>
-                    <tr>
-                      <td><Link to={`/cursos/${id}/estudiantes/${alert.estudianteId}`}>{alert.estudiante}</Link></td>
-                      <td>{alert.regla}</td>
-                      <td>{formatDate(alert.fechaUtc)}</td>
-                      <td><span className={`status-pill status-pill--${stateTone[alert.estado] ?? 'neutral'}`}>{alert.estado}</span></td>
-                      <td>
-                        <button
-                          className="button button--secondary"
-                          onClick={() => setExpanded(expanded === key ? null : key)}
-                          type="button"
-                        >
-                          {expanded === key ? 'Ocultar evidencia' : 'Ver evidencia'}
-                        </button>{' '}
-                        {alert.estado !== 'Revisada' && (
-                          <button className="button button--secondary" disabled={busy === key} onClick={() => change(alert, 'Revisada')} type="button">Marcar revisada</button>
-                        )}{' '}
-                        {alert.estado !== 'Descartada' && (
-                          <button className="button button--secondary" disabled={busy === key} onClick={() => change(alert, 'Descartada')} type="button">Descartar</button>
-                        )}
-                      </td>
-                    </tr>
-                    {expanded === key && (
-                      <tr>
-                        <td colSpan="5">
-                          <p>{alert.texto}</p>
-                          <ul>
-                            {alert.evidencias.map((evidence, index) => (
-                              <li key={`${evidence.item}-${index}`}>
-                                <strong>{evidence.item}</strong>: {evidence.valor} — {evidence.descripcion}
-                                {evidence.fechaUtc ? ` (${formatDate(evidence.fechaUtc)})` : ''}
-                              </li>
-                            ))}
-                          </ul>
-                        </td>
-                      </tr>
+              {alerts.filter((alert) => alert.estado === filter).map((alert) => (
+                <tr className={location.hash === `#alerta-${encodeURIComponent(alert.key)}` ? 'is-focused' : undefined} id={`alerta-${alert.key}`} key={alert.key}>
+                  <td>
+                    <Link to={`/cursos/${id}/estudiantes#actividad-${encodeURIComponent(alert.actividad)}`}>{alert.actividad}</Link>
+                  </td>
+                  <td><Link to={`/cursos/${id}/estudiantes/${alert.estudianteId}`}>{alert.estudiante}</Link></td>
+                  <td className="gradebook__low">{formatGrade(alert.nota)}</td>
+                  <td><span className={`status-pill status-pill--${stateTone[alert.estado] ?? 'neutral'}`}>{alert.estado}</span></td>
+                  <td>
+                    {alert.estado !== 'Revisada' && (
+                      <button className="button button--secondary" onClick={() => change(alert, 'Revisada')} type="button">Marcar revisada</button>
+                    )}{' '}
+                    {alert.estado !== 'Descartada' && (
+                      <button className="button button--secondary" onClick={() => change(alert, 'Descartada')} type="button">Descartar</button>
                     )}
-                  </Fragment>
-                )
-              })}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
-        {panel && (
-          <p className="muted">Fuente: {panel.fuente} · Última sincronización: {formatDate(panel.ultimaSincronizacionUtc)}</p>
-        )}
       </section>
     </>
   )

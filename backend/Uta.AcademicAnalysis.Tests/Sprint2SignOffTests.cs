@@ -39,11 +39,15 @@ public sealed class GroupAnalysisSignOffTests
         Assert.Equal("Moodle", analysis.Fuente);
         Assert.Equal(SyncedAt, analysis.UltimaSincronizacionUtc);
 
-        var trend = Assert.Single(analysis.Tendencia);
-        Assert.Equal(new DateOnly(2026, 11, 10), trend.Fecha);
-        Assert.Equal(10m, trend.Escala);
-        Assert.Equal(4.17m, trend.PromedioCurso);
-        Assert.False(trend.DatosInsuficientes);
+        Assert.Equal(["Quiz A", "Tarea B", "Practica C"], analysis.Tendencia.Select(item => item.Actividad).ToArray());
+        var quiz = analysis.Tendencia.Single(item => item.Actividad == "Quiz A");
+        Assert.Null(quiz.Fecha);
+        Assert.Null(quiz.Variacion);
+        Assert.Equal(10m, quiz.Escala);
+        Assert.Equal(6.00m, quiz.PromedioCurso);
+        Assert.False(quiz.DatosInsuficientes);
+        Assert.Equal(-3.00m, analysis.Tendencia.Single(item => item.Actividad == "Tarea B").Variacion);
+        Assert.True(analysis.Tendencia.Single(item => item.Actividad == "Practica C").DatosInsuficientes);
     }
 
     [Fact]
@@ -54,7 +58,8 @@ public sealed class GroupAnalysisSignOffTests
 
         Assert.True(small.DatosInsuficientes);
         Assert.False(small.BajoUmbral);
-        Assert.False(analysis.Tendencia.Single().DatosInsuficientes);
+        Assert.False(analysis.Tendencia.Single(item => item.Actividad == "Quiz A").DatosInsuficientes);
+        Assert.True(analysis.Tendencia.Single(item => item.Actividad == "Tarea B").DatosInsuficientes);
     }
 
     [Fact]
@@ -339,6 +344,7 @@ public sealed class StubAnalysis : IAnalysisQueryClient
     public Task<IReadOnlyCollection<CursoDto>> GetCoursesAsync(string? bearerToken, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<PaginaDto<EstudianteCursoDto>> GetCourseStudentsAsync(int courseId, string? search, string? status, int page, int pageSize, string? bearerToken, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<IReadOnlyCollection<DocenteCursoDto>> GetCourseTeachersAsync(int courseId, string? bearerToken, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<LibroCalificacionesDto?> GetCourseGradebookAsync(int courseId, string? bearerToken, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<SeguimientoEstudianteDto?> GetStudentTrackingAsync(int courseId, int studentId, string? bearerToken, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<IReadOnlyCollection<RecomendacionDto>> GetRecommendationsAsync(int courseId, string? bearerToken, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<ResultadoGenerarRecomendacionesDto> GenerateRecommendationsAsync(int courseId, SolicitudRecomendacionesGatewayDto request, string? bearerToken, CancellationToken cancellationToken = default) => throw new NotSupportedException();

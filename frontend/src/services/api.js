@@ -144,6 +144,10 @@ export async function getAllCourseStudents(courseId) {
   return students
 }
 
+export async function getCourseGradebook(courseId) {
+  return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/calificaciones`)
+}
+
 export async function getStudentTracking(courseId, studentId) {
   return requestJson(
     `/api/cursos/${encodeURIComponent(courseId)}/estudiantes/${encodeURIComponent(studentId)}/seguimiento`,
@@ -179,11 +183,15 @@ export async function getCourseRecommendations(courseId) {
   return recommendations
 }
 
-export async function generateCourseRecommendations(courseId, { estudianteId = null } = {}) {
+export async function generateCourseRecommendations(courseId, {
+  estudianteId = null,
+  umbral = 6,
+  minimoCalificaciones = 7,
+} = {}) {
   return requestJson(`/api/cursos/${encodeURIComponent(courseId)}/recomendaciones/generar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ umbral: 6, minimoCalificaciones: 7, estudianteId }),
+    body: JSON.stringify({ umbral, minimoCalificaciones, estudianteId }),
   })
 }
 

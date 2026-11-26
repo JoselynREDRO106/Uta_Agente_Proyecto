@@ -11,10 +11,13 @@ public static class GroupAnalysisCalculator
         decimal thresholdOutOfTen,
         int minimumGrades)
     {
-        var items = snapshot.Grades.Items
+        var orderedItems = snapshot.Grades.Items
             .Where(item => item.GradeMax > item.GradeMin)
             .Where(item => !IsSummaryItem(item.ItemType))
-            .ToDictionary(item => item.Id);
+            .GroupBy(item => item.Id)
+            .Select(group => group.First())
+            .ToArray();
+        var items = orderedItems.ToDictionary(item => item.Id);
 
         var grades = snapshot.Grades.Grades
             .Where(grade => items.ContainsKey(grade.ItemId))
@@ -27,7 +30,7 @@ public static class GroupAnalysisCalculator
             .Select(grade => grade!)
             .ToArray();
 
-        var activityResults = items.Values
+        var activitySequence = orderedItems
             .Select(item =>
             {
                 var itemGrades = grades.Where(grade => grade.ItemId == item.Id).ToArray();
@@ -45,23 +48,33 @@ public static class GroupAnalysisCalculator
                     !insufficient && average.HasValue && average.Value < thresholdOutOfTen,
                     insufficient);
             })
+            .ToArray();
+        var activityResults = activitySequence
             .OrderBy(item => item.Promedio ?? decimal.MaxValue)
             .ThenBy(item => item.Nombre, StringComparer.CurrentCulture)
             .ToArray();
 
-        var trend = grades
-            .Where(grade => grade.GradedAtUtc.HasValue)
-            .GroupBy(grade => DateOnly.FromDateTime(grade.GradedAtUtc!.Value))
-            .OrderBy(group => group.Key)
-            .Select(group =>
+        decimal? previousAverage = null;
+        var trend = activitySequence
+            .Select(activity =>
             {
-                var count = group.Count();
+                decimal? change = activity.Promedio.HasValue && previousAverage.HasValue
+                    ? decimal.Round(activity.Promedio.Value - previousAverage.Value, 2)
+                    : null;
+                if (activity.Promedio.HasValue)
+                {
+                    previousAverage = activity.Promedio;
+                }
+
                 return new PuntoTendenciaDto(
-                    group.Key,
-                    count < minimumGrades ? null : decimal.Round(group.Average(grade => grade.Value), 2),
-                    10m,
-                    count,
-                    count < minimumGrades);
+                    null,
+                    activity.Promedio,
+                    activity.Escala,
+                    activity.NumCalificaciones,
+                    activity.DatosInsuficientes,
+                    activity.ItemId,
+                    activity.Nombre,
+                    change);
             })
             .ToArray();
 

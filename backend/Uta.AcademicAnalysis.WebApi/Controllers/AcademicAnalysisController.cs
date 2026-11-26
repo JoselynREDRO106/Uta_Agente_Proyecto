@@ -154,11 +154,35 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
             return NotFound();
         }
 
-        var items = snapshot.Grades.Items
-            .Where(item => item.GradeMax > 0
-                && !item.ItemType.Equals("course", StringComparison.OrdinalIgnoreCase)
-                && !item.ItemType.Equals("category", StringComparison.OrdinalIgnoreCase))
-            .ToArray();
+        return Ok(BuildStudentTracking(snapshot, student, courseId, studentId));
+    }
+
+    [HttpGet("courses/{courseId:int}/gradebook")]
+    public async Task<ActionResult<LibroCalificacionesDto>> GetGradebook(
+        int courseId,
+        CancellationToken cancellationToken)
+    {
+        if (!CanAccessCourse(courseId))
+        {
+            return Forbid();
+        }
+
+        var snapshot = await GetSnapshotAsync(courseId, cancellationToken);
+        if (snapshot is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(BuildGradebook(snapshot));
+    }
+
+    private static SeguimientoEstudianteDto BuildStudentTracking(
+        AcademicCourseSnapshot snapshot,
+        MoodleEnrolledUserDto student,
+        int courseId,
+        int studentId)
+    {
+        var items = GradableItems(snapshot);
         var gradesByItem = snapshot.Grades.Grades
             .Where(grade => grade.UserId == studentId)
             .GroupBy(grade => grade.ItemId)
@@ -169,14 +193,7 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
         foreach (var item in items)
         {
             gradesByItem.TryGetValue(item.Id, out var grade);
-            decimal? value = grade is not null
-                && decimal.TryParse(
-                    grade.Grade,
-                    System.Globalization.NumberStyles.Number,
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    out var parsed)
-                    ? parsed
-                    : null;
+            var value = ParseGrade(grade);
             notes.Add(new SeguimientoNotaDto(
                 item.Id,
                 item.ItemName,
@@ -190,7 +207,7 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
                 grade is null ? "NoDisponible" : ClassifyActivity(grade, value.HasValue)));
         }
 
-        return Ok(new SeguimientoEstudianteDto(
+        return new SeguimientoEstudianteDto(
             courseId,
             studentId,
             student.FullName,
@@ -202,8 +219,55 @@ public sealed partial class AcademicAnalysisController(AnalysisDbContext dbConte
                 .ThenBy(note => note.FechaUtc)
                 .ThenBy(note => note.Item, StringComparer.CurrentCulture)
                 .ToArray(),
-            activities));
+            activities);
     }
+
+    private static LibroCalificacionesDto BuildGradebook(AcademicCourseSnapshot snapshot)
+    {
+        var items = GradableItems(snapshot);
+        var gradesByStudent = snapshot.Grades.Grades
+            .GroupBy(grade => (grade.UserId, grade.ItemId))
+            .ToDictionary(group => group.Key, group => ParseGrade(group.First()));
+        var students = snapshot.EnrolledUsers
+            .Where(MoodleParticipantRoles.IsStudent)
+            .GroupBy(user => user.Id)
+            .Select(group => group.First())
+            .OrderBy(user => user.FullName, StringComparer.CurrentCulture)
+            .ThenBy(user => user.Id)
+            .Select(user => new FilaLibroCalificacionesDto(
+                user.Id,
+                user.FullName,
+                user.Email,
+                items.Select(item => new NotaLibroDto(
+                    item.Id,
+                    gradesByStudent.TryGetValue((user.Id, item.Id), out var value) ? value : null)).ToArray()))
+            .ToArray();
+
+        return new LibroCalificacionesDto(
+            snapshot.MoodleCourseId,
+            "Moodle",
+            snapshot.UpdatedAtUtc,
+            snapshot.SyncStatus,
+            items.Select(item => new ActividadCalificacionDto(item.Id, item.ItemName, item.GradeMin, item.GradeMax)).ToArray(),
+            students);
+    }
+
+    private static MoodleGradeItemDto[] GradableItems(AcademicCourseSnapshot snapshot) =>
+        snapshot.Grades.Items
+            .Where(item => item.GradeMax > 0
+                && !item.ItemType.Equals("course", StringComparison.OrdinalIgnoreCase)
+                && !item.ItemType.Equals("category", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+    private static decimal? ParseGrade(MoodleUserGradeDto? grade) =>
+        grade is not null
+        && decimal.TryParse(
+            grade.Grade,
+            System.Globalization.NumberStyles.Number,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var parsed)
+            ? parsed
+            : null;
 
     [HttpGet("courses/{courseId:int}/period")]
     public async Task<ActionResult<AcademicPeriodDto>> GetPeriod(

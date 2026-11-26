@@ -7,6 +7,50 @@ using Uta.Middleware.Infrastructure;
 using Uta.Middleware.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+ApplySharedAgentKey(builder);
+
+static void ApplySharedAgentKey(WebApplicationBuilder builder)
+{
+    if (!builder.Environment.IsDevelopment())
+    {
+        return;
+    }
+
+    var envFile = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".env"));
+    if (!File.Exists(envFile))
+    {
+        return;
+    }
+
+    string? agentKey = null;
+    foreach (var rawLine in File.ReadLines(envFile))
+    {
+        var line = rawLine.Trim();
+        const string prefix = "ACADEMIC_AGENT_API_KEY=";
+        if (!line.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            continue;
+        }
+
+        agentKey = line[prefix.Length..].Trim().Trim('"');
+    }
+
+    if (string.IsNullOrWhiteSpace(agentKey))
+    {
+        return;
+    }
+
+    var values = new Dictionary<string, string?>
+    {
+        ["AcademicAgent:ApiKey"] = agentKey,
+    };
+    if (string.IsNullOrWhiteSpace(builder.Configuration["AcademicAgent:BaseUrl"]))
+    {
+        values["AcademicAgent:BaseUrl"] = "http://localhost:8010";
+    }
+
+    builder.Configuration.AddInMemoryCollection(values);
+}
 
 // ─── Servicios ────────────────────────────────────────────────────────────────
 builder.Services.AddOpenApi();
@@ -46,7 +90,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
             .AllowAnyHeader()
             .AllowAnyMethod());
 });
